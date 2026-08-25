@@ -79,7 +79,7 @@
              @Uncaused) that every row this service writes has to decide about — see ArchRulesTest —
              and its own datasource, persistence unit and Flyway lineage. Adding it later would be a
              flag day: a second store appears in the deployment spec and in every suite at once. -->
-        <qits.eventstream.version>2026.818.45652</qits.eventstream.version>
+        <qits.eventstream.version>2026.825.74539</qits.eventstream.version>
 
         <qits.maven.repository.url>http://registry.dev.localhost:8080/artifacts/maven/maven</qits.maven.repository.url>
 
