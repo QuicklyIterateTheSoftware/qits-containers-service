@@ -339,48 +339,142 @@ failure lands on the consumer's build. `-N` means "do not recurse into `<modules
 produce the mirror-image failure — the parent pom with neither jar. `-pl` is already the selection
 that is wanted.
 
-## The third IT: the packaged one with the tenant on, and the userflow
+## The userflow catalogue
 
-`api/TokenValidationBootstrapIT` boots the **packaged** fast-jar with the **machine-auth gate on** —
-`qits.auth.machine.required=true`, which is what `quarkus.oidc.tenant-enabled` is spelled in terms of
-— against `eu.wohlben.qits.servicemock.idp.MockIdp`, a recording stand-in for qits-platform-idp that
-serves a real JWKS for a generated keypair and mints RS256 bearers signed by it. That combination is
-the gap `MachineGuardTest` leaves: that test flips the same gate but inlines
-`quarkus.oidc.public-key` and clears `auth-server-url`, so the shipped `auth-server-url` +
-`discovery-enabled=false` + `jwks-path=jwks` trio — a real fetch over a real listener, at startup,
-before any caller arrives — is exercised nowhere else.
+Thirteen `@UserStory` methods across six `@QuarkusIntegrationTest` classes, all on **one**
+`@TestProfile` and therefore **one** launched fast-jar. The run writes `service/target/userstories/`
+— the proof as documentation, a network diagram beside the steps — and
+`.config/qits/ci-event-userflows.yml` publishes it per commit as the docs bundle
+`@userflows/qits-containers`.
 
-Three things about it are easy to undo:
+    api/TokenValidationBootstrapIT      authentication   the packaged boot with the OIDC tenant ON
+    stories/boot/HostBootstrapIT        startup          what the boot does to the host
+    stories/lifecycle/WorkloadLifecycleIT   workloads    ensure, confirm, and the unpublished image
+    stories/ownership/OwnershipBoundaryIT   ownership    two machine actors, and the host's own stores
+    stories/reap/WorkloadReapIT         reaping          the addressed removal, and the boot reap
+    stories/refusals/AccessRefusalIT    refusals         four doors, and what none of them reached
 
-- **It still has no docker.** The profile extends `ContainersPackagedSurfaceIT.PackagedUnderTarget`,
-  which points `qits.containers.container-runtime` at a binary that does not exist, and the story's
-  guarded route is the inventory listing — a read of this service's own rows with no driver call
-  anywhere on it. A story that reached for `ensure` would have needed a daemon and the rule at the
-  top of this file would have been the thing it broke.
-- **It is opted in by NAME, not by `skipITs`.** The root pom keeps `skipITs=true`, because failsafe
-  has one run per module and flipping it would turn `ContainersRestartAdoptionIT` back on with it.
-  Run it — and `.config/qits/ci-event-userflows.yml` runs it — as
-  `./mvnw verify -DskipITs=false -Dit.test=TokenValidationBootstrapIT`.
+**`api/TokenValidationBootstrapIT` is still the one that boots the tenant.** It runs the **packaged**
+fast-jar with the **machine-auth gate on** — `qits.auth.machine.required=true`, which is what
+`quarkus.oidc.tenant-enabled` is spelled in terms of — against
+`eu.wohlben.qits.servicemock.idp.MockIdp`, a recording stand-in for qits-platform-idp that serves a
+real JWKS for a generated keypair and mints RS256 bearers signed by it. That combination is the gap
+`MachineGuardTest` leaves: that test flips the same gate but inlines `quarkus.oidc.public-key` and
+clears `auth-server-url`, so the shipped `auth-server-url` + `discovery-enabled=false` +
+`jwks-path=jwks` trio — a real fetch over a real listener, at startup, before any caller arrives —
+is exercised nowhere else. Its denied story carries the claim no sibling repo's copy can: after the
+401s for an unknown key and a foreign audience, an **impeccable token that is another module's** is
+refused 403 on this owner's rows and served 200 on its own.
+
+### The docker stand-in, which is what makes a catalogue possible here
+
+`stories/support/StoryDocker` writes an **executable** and the profile points
+`qits.containers.container-runtime` at it. That is the honest shape of this seam and not a
+convenience: `core/docker/ContainerProcess` **spawns the docker CLI** and reads its pipes, so a
+stubbed HTTP endpoint would stand in for nothing. The script records every argv with the exit code
+it answered, and keeps just enough state under `target/story-docker/state/` that the registry's own
+state machine — the row before the run, the inspect that settles it, the idempotent delete — runs
+for real against it.
+
+So **the docker hop is drawn as evidence, not declared**. That is the difference this repository
+could most easily have got wrong: a `Network.declare("socket", …)` would have documented the one
+dependency this service exists for as a claim. The only declared edge in the whole catalogue is the
+registry's postgres, which no tap on this side can see.
+
+Four things about it are load-bearing:
+
+- **The answers are docker's own words where the wording is read.** `No such object` is what
+  `DockerContainersDriver.ABSENT_MARKERS` matches to tell "docker has no such container" from
+  "docker did not answer"; `manifest unknown` is what `ContainersResource.IMAGE_MISSING_MARKERS`
+  matches to turn a refused run into a 409. Getting either string wrong would make the stories pass
+  against a daemon that behaves differently from every real one.
+- **The recording has NO floor**, unlike every other file-backed tap in the fleet. The calls the
+  boot makes — three shared volumes, one network inspect — are the whole subject of
+  `HostBootstrapIT`, exactly as the startup JWKS fetch is the subject of the authentication story.
+  So the source is registered at zero and the cursor attributes those lines to whichever story
+  drains first, which the class order makes the story about them.
+- **The class order is FQCN-alphabetical inside the profile group**, broken by
+  `UserflowClassOrderer` (registered as junit's *secondary* orderer — see below). The story packages
+  are named `boot`, `lifecycle`, `ownership`, `reap`, `refusals` so that alphabetical is *intended*;
+  every story method also declares `@UserflowRunsAfter` naming the classes it assumes ran. Run one
+  of the later classes on its own and its first story inherits the boot calls and fails its edge
+  count — loudly, which is the right way for that assumption to break.
+- **A label is a summary, never the argv.** `StoryDocker.summarize` reduces a call to `run
+  qits-ct-qits-ci-step-story-alpha` and appends `-> 0`. Keeping the whole command line would put
+  `--label qits.containers.row=<uuid>` in a hashed label (a `networkHash` that never settles) and a
+  Go `--format` template's braces in a mermaid diagram.
+
+### The observation ticker is off, and that is the catalogue's one real gap
+
+The profile sets `qits.containers.observe-interval-seconds=0`. Zero is a **shipped** configuration
+with its own documented behaviour, not a test-only switch — but it is set here because the
+observation pass is a **timer**: a `docker inspect` it made mid-story would land in whichever story
+drained next, and nothing in the recorded argv distinguishes it from the inspect an `ensure` caused,
+so it could not even be excluded by content. What that costs is stated plainly: **`ContainerObserver`'s
+own transitions, `IdleSweep`, `MaxAgeGc`, `VolumeReconcile` and `RowPrune` are the part of this
+service no story reaches.** They have no HTTP surface, so a packaged IT cannot drive them; their
+proofs are the `@QuarkusTest`s in `core` that call `observeOnce()` and the sweeps' own entry points
+directly. Giving them a story would need a route that triggers a pass, and inventing one for a test
+is worse than the gap.
+
+### The rest of the mechanics
+
+- **`Interactions` records notes only.** Service-to-service traffic is never narrated: the framework
+  ships the inbound tap (`NetworkTaps.restAssured`) and the local `StoryNetworkFilter` every service
+  used to hand-copy is **deleted**. `MockIdp`'s recording and `StoryDocker`'s are cumulative
+  `NetworkCapture.source`s. Every story is **browserless** (an `Interactions` parameter, sometimes a
+  `Network` one, and no `Flow`), so the framework's transitive Playwright never launches anything —
+  the only shape a repository holding the clone-alone rule could take it in.
+- **The shipped tap labels the PATH and drops the query.** So the boot reap's
+  `?createdBefore=<instant>` — the one genuinely run-local value a story sends — never reaches a
+  label, and no `labelNormalizer` is needed for it. The corollary is the trap: two routes differing
+  only in their query are **one** edge.
+- **The actor names an edge's initiator**, set before each call, which is how the ownership pair
+  draws as two arrows from one named module.
+- **The class orderer is installed the one way Quarkus permits** — the
+  `junit.quarkus.orderer.secondary-orderer` line in `service`'s test properties. A local
+  `junit-platform.properties` hard-fails surefire.
+- **The story profile owns two databases of its own** (`containers_userflow_it` and its eventstream
+  sibling), asked for through `PackagedUnderTarget.databaseUrl`, which is package-private for
+  exactly that. The stories write `qits-ci` rows and `ContainersPackagedSurfaceIT` asserts that
+  owner's listing is empty; sharing one store would make that IT pass or fail on which profile group
+  ran first, which is not a fact about the packaged artifact.
 - **Every override the profile sets is a RUNTIME key**, and the darkness is not inherited: a
   launched artifact runs under neither `%dev` nor `%test`, so `quarkus.otel.sdk.disabled` and
-  `qits.eventstream.enabled=false` are set again here. Dark is still not absent — the outbox
+  `qits.eventstream.enabled=false` are set again there. Dark is still not absent — the outbox
   datasource opens and migrates, which is why the second `QITS_RESOURCE_*` triple is not optional.
+- **The ITs are opted in by NAME, not by `skipITs`.** The root pom keeps `skipITs=true`, because
+  failsafe has one run per module and flipping it would turn `ContainersRestartAdoptionIT` back on
+  with it. Run them — and `.config/qits/ci-event-userflows.yml` runs them — as
 
-It is also this repo's first **userflow**: the two stories are `@UserStory` methods in category
-`authentication`, so the run also writes `service/target/userstories/` — the proof as documentation,
-with the idp interactions drawn as a sequence diagram. They are **browserless** (an `Interactions`
-parameter and no `Flow`), so the framework's transitive Playwright never launches anything. The
-class orderer is installed the one way Quarkus permits — the
-`junit.quarkus.orderer.secondary-orderer` line in `service`'s test properties; a local
-`junit-platform.properties` hard-fails surefire.
+      ./mvnw verify -DskipITs=false \
+        -Dit.test=TokenValidationBootstrapIT,HostBootstrapIT,WorkloadLifecycleIT,OwnershipBoundaryIT,WorkloadReapIT,AccessRefusalIT
 
-The denied story carries the claim no sibling repo's copy of it can: after the 401s for an unknown
-key and a foreign audience, an **impeccable token that is another module's** is refused 403 on this
-owner's rows and served 200 on its own. That is `OwnerGuard` — the one door of the three that is
-this service's own decision — proved through real validation rather than through a fake identity.
+  That pipeline is **non-gating by design**: it is a separate file from `ci-post-receive.yml` so a
+  red story does not cost the branch its image. It is the only one of the three pipelines with no
+  image step and no docker at all, and the only one that needs no `-Dquarkus.quinoa=false` — this
+  service is machine-facing and carries no client.
 
-`.config/qits/ci-event-userflows.yml` publishes the reports per commit as the docs bundle
-`@userflows/qits-containers`, and is **non-gating by design**: it is a separate file from
-`ci-post-receive.yml` so a red story does not cost the branch its image. It is the only one of the
-three pipelines with no image step and no docker at all, and the only one that needs no
-`-Dquarkus.quinoa=false` — this service is machine-facing and carries no client.
+## `ContainersPackagedSurfaceIT` is RED, and it was red before the catalogue
+
+Measured 2026-08-29 on the released main (`bb06fed`), with the working tree stashed, so it is this
+repository's own state and not a story's doing:
+
+    ContainersPackagedSurfaceIT.theOrchestrationRoutesAnswerUnderTheGatewaySegmentAndNowhereElse
+    ContainersPackagedSurfaceIT.aRowRoundTripsAgainstTheShippedSchemaWithNoDockerOnTheHost
+    Expected status code <200> but was <401>
+
+It is not a flake and it is not fixable by a retry. That IT drives the routes **unauthenticated**,
+and every route of this service carries `@RolesAllowed("qits:system")`. What makes an anonymous
+request work in a `@QuarkusTest` is qits-auth-core's `%test` dev user, which is `LaunchMode`-guarded
+— and a **launched artifact runs in NORMAL mode**, where it does not exist. So with the machine gate
+off there is no identity at all and `@RolesAllowed` answers 401 before any resource method runs. The
+IT has been unrunnable since WP4 put the guard on every route, and nothing noticed because
+`skipITs=true` and neither pipeline names this class.
+
+**It is deliberately left alone here.** Making it green means deciding what it should claim, and both
+answers are somebody's design decision rather than a userflows change: either its expectations become
+401/404 — which still separates "the route is there and guarded" from "there is no such route", but
+gives up the row round-trip that is the reason the class exists — or its profile turns the machine
+gate on and presents `MockIdp` bearers, which is what `TokenValidationBootstrapIT.PackagedWithMockIdp`
+already does and would make the two profiles nearly the same thing. Pick one on purpose.
