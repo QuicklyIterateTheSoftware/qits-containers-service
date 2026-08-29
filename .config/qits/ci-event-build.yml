@@ -1,13 +1,17 @@
-# The pipeline qits-ci runs on every push to a tracked branch of this repository.
-#
-# TWO STEPS, because the suite and the image want different containers: the suite wants maven and a
-# JDK, the image build wants the docker CLI and a socket. Splitting them also means a red suite
-# never publishes an image — the steps run in order and the run stops at the first failure.
-#
-# There is no npm half here. This service is machine-facing and carries no client, which is what
-# makes ci-base the right image for step 2 rather than node-docker-base.
+# The image build, per push — moved from ci-post-receive.yml when this repo went domain-event-only,
+# the switch qits-githost and qits-artifacts already made. `checkout:` makes it a move rather than a
+# rewrite: the run builds the pushed branch at the pushed sha, but the pipeline is DISCOVERED at main,
+# so a pushed branch can no longer alter the CI that gates it. suppressCi restates what the
+# post-receive convention did with `-o qits.no-ci`. Separate from ci-event-userflows.yml on purpose:
+# that run is non-gating, a red verify must not cost the image.
+event: SCMPublishCommit
+when:
+  - repoId: { exact: qits-containers }
+    suppressCi: { exact: "false" }
+checkout:
+  branch: branch
+  sha: sha
 steps:
-    # --- step 1: the suite ------------------------------------------------------------------------
   - image: qits/build-images/maven-base:latest
     user: build
     timeout-seconds: 1800
