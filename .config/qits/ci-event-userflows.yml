@@ -1,7 +1,7 @@
 # The per-commit userflow run: `mvn verify` at the pushed commit — which regenerates
-# service/target/userstories/ through TokenValidationBootstrapIT — and the reports published as one
-# docs bundle, site @userflows/qits-containers, version = the bare commit sha, branch riding as
-# artifacts metadata for discovery.
+# service/target/userstories/ through the six story ITs — and the reports published as one docs
+# bundle, site @userflows/qits-containers, version = the bare commit sha, branch riding as artifacts
+# metadata for discovery.
 #
 # NON-GATING BY DESIGN, which is why it is a separate file from ci-post-receive.yml: this run going
 # red must not cost the branch its image while "quality gate before merging" is still a decision to
@@ -28,16 +28,23 @@
 # starts real containers on a real daemon, and this step has no docker to offer it. The root pom's
 # `qits.it.excluded-groups` would exclude it by its `extended` tag, but it is EMPTY BY DEFAULT and
 # only the `native` profile sets it, deliberately, so that `-DskipITs=false` still means "run
-# everything". Naming the class keeps the opt-in to this pipeline and to this story:
-# `-DskipITs=false "-Dit.test=TokenValidationBootstrapIT"`. It also leaves out
-# ContainersPackagedSurfaceIT, which is about the artifact rather than about the story and is a
-# second launch of the same fast-jar.
+# everything". Naming the classes keeps the opt-in to this pipeline and to these stories.
 #
-# NOTHING HERE REACHES A DOCKER SOCKET. The story's profile points
-# qits.containers.container-runtime at a binary that does not exist, so the boot steps that would
-# otherwise shell out degrade to warnings — which is the repository's own clone-alone rule held in
-# the one place it is hardest to hold, and what makes this step safe to run in a container that has
-# no daemon and no capability to reach one.
+# THE LIST IS THE CATALOGUE, BY NAME, AND ITS ORDER IS NOT THE RUN ORDER. Failsafe takes the classes
+# as a set; what orders them is the UserflowClassOrderer registered as junit's secondary orderer,
+# which breaks ties inside a @TestProfile group by FQCN — so the packages are named boot, lifecycle,
+# ownership, reap, refusals precisely because alphabetical is the order the diagrams assume. It is
+# spelled here newest-first-reader-first anyway, so a person reading this file reads the catalogue
+# in the order it tells its story. ContainersPackagedSurfaceIT is deliberately NOT in it: it is
+# about the artifact rather than about a story, it is a second launch of the same fast-jar, and it
+# is red on the released main for a reason of its own (AGENTS.md says which).
+#
+# NOTHING HERE REACHES A DOCKER SOCKET, in the repository whose subject is docker. The stories drive
+# real ensures, real log reads and real reaps — against stories/support/StoryDocker, a recording
+# stand-in that IS the binary qits.containers.container-runtime names, because this service spawns
+# the docker CLI rather than opening a socket. So the docker hop is drawn from evidence while this
+# step still runs in a container that has no daemon and no capability to reach one, which is the
+# repository's clone-alone rule held in the one place it is hardest to hold.
 #
 # Loop review: this pipeline PUTs a docs bundle and pushes no commit — no cycle. Publish-if-absent:
 # events redeliver and docs versions are immutable, so 409 is success (the qits-spa-ui-components
@@ -61,7 +68,8 @@ steps:
       export QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL"
       ./mvnw -B -ntp -s .qits-maven-settings.xml verify \
         -Dqits.maven.repository.url="$QITS_MAVEN_REPOSITORY_URL" \
-        -DskipITs=false "-Dit.test=TokenValidationBootstrapIT"
+        -DskipITs=false \
+        "-Dit.test=TokenValidationBootstrapIT,HostBootstrapIT,WorkloadLifecycleIT,OwnershipBoundaryIT,WorkloadReapIT,AccessRefusalIT"
 
       # `-C … .` so the story directories are the bundle's roots — nesting one directory deep would
       # put it in every served URL. The path is the module's, since `service` is the only module

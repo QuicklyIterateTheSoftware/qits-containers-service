@@ -28,7 +28,7 @@
          monorepo and no parent to inherit from. -->
     <groupId>eu.wohlben.qits</groupId>
     <artifactId>qits-containers</artifactId>
-    <version>2026.829.140459</version>
+    <version>2026.829.231527</version>
     <packaging>pom</packaging>
     <name>qits-containers</name>
 
@@ -81,19 +81,22 @@
              flag day: a second store appears in the deployment spec and in every suite at once. -->
         <qits.eventstream.version>2026.825.74539</qits.eventstream.version>
 
-        <!-- The user-story framework (test scope): TokenValidationBootstrapIT is a userflow, so a
-             `mvn verify -DskipITs=false` also regenerates service/target/userstories/ — the story's
-             documentation, sequence diagram included. It carries a version of its own rather than
+        <!-- The user-story framework (test scope). This repository's userflow catalogue is six IT
+             classes on one profile — api/TokenValidationBootstrapIT plus service/…/stories/** — so
+             naming them in a `mvn verify -DskipITs=false` regenerates service/target/userstories/:
+             the stories' documentation, network diagrams included, OBSERVED rather than narrated.
+             This version is also the one that ships NetworkTaps, which replaced the local
+             StoryNetworkFilter this repo used to carry. It has a version of its own rather than
              riding the three above, because it is released out of libs/qits-userflows and not out
              of the qits-integrations-quarkus reactor. -->
-        <qits.userflows.version>2026.828.153026</qits.userflows.version>
+        <qits.userflows.version>2026.829.201516</qits.userflows.version>
 
         <!-- The recording service mocks the same IT boots against (the generic MockService plus
              idp.MockIdp), released out of libs/qits-integrations-quarkus like qits-db-core,
              qits-arch-rules and qits-auth-core above — so the same-string policy those three follow
              applies the day this repo consumes a newer reactor, and until then this names the
              release the mock idp arrived in. -->
-        <qits.service-mock.version>2026.827.71232</qits.service-mock.version>
+        <qits.service-mock.version>2026.829.201505</qits.service-mock.version>
 
         <qits.maven.repository.url>http://registry.dev.localhost:8080/artifacts/maven/maven</qits.maven.repository.url>
 

@@ -7,7 +7,7 @@
     <parent>
         <groupId>eu.wohlben.qits</groupId>
         <artifactId>qits-containers</artifactId>
-        <version>2026.829.140459</version>
+        <version>2026.829.231527</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -152,11 +152,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <!-- The user-story framework: TokenValidationBootstrapIT is written as a @UserStory, so
-                 the packaged-boot proof doubles as documentation — steps, interactions and a
-                 sequence diagram emitted under target/userstories/. The story is browserless (no
-                 Flow parameter), so the transitive Playwright never launches anything, which is the
-                 only shape a repository holding the clone-alone rule could take it in. -->
+            <!-- The user-story framework: the packaged proofs are written as @UserStory methods, so
+                 they double as documentation — steps, notes and an observed network diagram emitted
+                 under target/userstories/. Every story is browserless (an Interactions parameter,
+                 sometimes a Network one, and no Flow), so the transitive Playwright never launches
+                 anything, which is the only shape a repository holding the clone-alone rule could
+                 take it in. It also ships the RestAssured tap every story class installs; there is
+                 no local copy of it here any more. -->
             <groupId>${project.groupId}</groupId>
             <artifactId>qits-userflows</artifactId>
             <scope>test</scope>
@@ -224,16 +226,17 @@
                 <artifactId>maven-surefire-plugin</artifactId>
             </plugin>
             <plugin>
-                <!-- ContainersPackagedSurfaceIT, TokenValidationBootstrapIT and the docker-backed
-                     proof (ContainersRestartAdoptionIT) bind here. skipITs=true is the parent's
+                <!-- ContainersPackagedSurfaceIT, the six userflow classes and the docker-backed
+                     proof (ContainersRestartAdoptionIT) all bind here. skipITs=true is the parent's
                      default, so a clone-alone `mvn verify` is green with no docker;
-                     `-DskipITs=false` runs all three and the docker one self-skips (JUnit
+                     `-DskipITs=false` runs everything and the docker one self-skips (JUnit
                      Assumptions) when the daemon is unreachable. The `native` profile flips skipITs
                      too and narrows to the packaged ITs via qits.it.excluded-groups.
 
                      The userflows pipeline (.config/qits/ci-event-userflows.yml) narrows further,
-                     with `-Dit.test=TokenValidationBootstrapIT`: it wants the story's reports and
-                     has no docker to offer the third one. -->
+                     naming the six story classes: it wants their reports, it has no docker to offer
+                     the adoption proof, and ContainersPackagedSurfaceIT is red for a reason of its
+                     own that AGENTS.md records. -->
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <executions>
                     <execution>

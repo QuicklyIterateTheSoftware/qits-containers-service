@@ -91,7 +91,17 @@ public class ContainersPackagedSurfaceIT {
           "qits.containers.container-runtime", "docker-absent-for-this-it");
     }
 
-    private static synchronized String databaseUrl(String property, String database) {
+    /**
+     * One embedded-postgres database, parked so both copies of this profile answer the same url.
+     *
+     * <p><b>Package-private rather than private</b>, so {@link
+     * TokenValidationBootstrapIT.PackagedWithMockIdp} can ask for databases of its OWN rather than
+     * copying the parking trick. It needs to: the userflow stories WRITE containers for {@code
+     * qits-ci}, and this class asserts that owner's listing is empty. Sharing one store would make
+     * this IT pass or fail on whether the stories happened to run first, which is not a fact about
+     * the packaged artifact.
+     */
+    static synchronized String databaseUrl(String property, String database) {
       String recorded = System.getProperty(property);
       if (recorded != null) {
         return recorded;
