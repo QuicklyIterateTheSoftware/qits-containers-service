@@ -152,6 +152,26 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <!-- The user-story framework: TokenValidationBootstrapIT is written as a @UserStory, so
+                 the packaged-boot proof doubles as documentation — steps, interactions and a
+                 sequence diagram emitted under target/userstories/. The story is browserless (no
+                 Flow parameter), so the transitive Playwright never launches anything, which is the
+                 only shape a repository holding the clone-alone rule could take it in. -->
+            <groupId>${project.groupId}</groupId>
+            <artifactId>qits-userflows</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- The recording service mocks. The IT points quarkus.oidc at idp.MockIdp — a
+                 MockService plus key material: it serves the JWKS for a generated keypair, mints
+                 tokens, records what it answered — the far end of the story's interactions. It is
+                 an in-process HTTP listener rather than a container, like everything else this
+                 suite stands up. -->
+            <groupId>${project.groupId}</groupId>
+            <artifactId>qits-service-mock</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <!-- The store every @QuarkusTest here boots against. Zonky spawns real postgres
                  binaries as a child process — a maven dependency rather than a container — which is
                  what keeps the clone-alone, docker-free rule true. -->
@@ -204,12 +224,16 @@
                 <artifactId>maven-surefire-plugin</artifactId>
             </plugin>
             <plugin>
-                <!-- ContainersPackagedSurfaceIT and the docker-backed proof
-                     (ContainersRestartAdoptionIT) bind here. skipITs=true is the parent's default,
-                     so a clone-alone `mvn verify` is green with no docker; `-DskipITs=false` runs
-                     them both and the docker one self-skips (JUnit Assumptions) when the daemon is
-                     unreachable. The `native` profile flips skipITs too and narrows to the packaged
-                     IT via qits.it.excluded-groups. -->
+                <!-- ContainersPackagedSurfaceIT, TokenValidationBootstrapIT and the docker-backed
+                     proof (ContainersRestartAdoptionIT) bind here. skipITs=true is the parent's
+                     default, so a clone-alone `mvn verify` is green with no docker;
+                     `-DskipITs=false` runs all three and the docker one self-skips (JUnit
+                     Assumptions) when the daemon is unreachable. The `native` profile flips skipITs
+                     too and narrows to the packaged ITs via qits.it.excluded-groups.
+
+                     The userflows pipeline (.config/qits/ci-event-userflows.yml) narrows further,
+                     with `-Dit.test=TokenValidationBootstrapIT`: it wants the story's reports and
+                     has no docker to offer the third one. -->
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <executions>
                     <execution>

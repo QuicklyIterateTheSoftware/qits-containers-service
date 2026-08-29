@@ -309,7 +309,9 @@ client meets speaks HTTP/1.1, so that assertion would pass with the `version(...
 
 `README.md`'s "Deploying it" has the shape. Two things about `.config/qits/` are this file's.
 
-**Both pipelines are two steps, and no build image would let them be one.** A `./mvnw` needs a JDK
+**The two that produce an image are two steps, and no build image would let them be one.** (The
+third, `ci-event-userflows.yml`, produces documentation and is one step on `maven-base` — see the
+section below.) A `./mvnw` needs a JDK
 and `ci-base` is `docker:cli` plus bash/curl/git/jq; `maven-base` carries no docker CLI. So the
 suite runs on one image and the image build on the other. Each step is its own container with its
 own clone, which is why the release pipeline's two steps each read the version and check out the tag
@@ -336,3 +338,49 @@ pom first; deploying the modules alone publishes jars whose parent exists in no 
 failure lands on the consumer's build. `-N` means "do not recurse into `<modules>`", so it would
 produce the mirror-image failure — the parent pom with neither jar. `-pl` is already the selection
 that is wanted.
+
+## The third IT: the packaged one with the tenant on, and the userflow
+
+`api/TokenValidationBootstrapIT` boots the **packaged** fast-jar with the **machine-auth gate on** —
+`qits.auth.machine.required=true`, which is what `quarkus.oidc.tenant-enabled` is spelled in terms of
+— against `eu.wohlben.qits.servicemock.idp.MockIdp`, a recording stand-in for qits-platform-idp that
+serves a real JWKS for a generated keypair and mints RS256 bearers signed by it. That combination is
+the gap `MachineGuardTest` leaves: that test flips the same gate but inlines
+`quarkus.oidc.public-key` and clears `auth-server-url`, so the shipped `auth-server-url` +
+`discovery-enabled=false` + `jwks-path=jwks` trio — a real fetch over a real listener, at startup,
+before any caller arrives — is exercised nowhere else.
+
+Three things about it are easy to undo:
+
+- **It still has no docker.** The profile extends `ContainersPackagedSurfaceIT.PackagedUnderTarget`,
+  which points `qits.containers.container-runtime` at a binary that does not exist, and the story's
+  guarded route is the inventory listing — a read of this service's own rows with no driver call
+  anywhere on it. A story that reached for `ensure` would have needed a daemon and the rule at the
+  top of this file would have been the thing it broke.
+- **It is opted in by NAME, not by `skipITs`.** The root pom keeps `skipITs=true`, because failsafe
+  has one run per module and flipping it would turn `ContainersRestartAdoptionIT` back on with it.
+  Run it — and `.config/qits/ci-event-userflows.yml` runs it — as
+  `./mvnw verify -DskipITs=false -Dit.test=TokenValidationBootstrapIT`.
+- **Every override the profile sets is a RUNTIME key**, and the darkness is not inherited: a
+  launched artifact runs under neither `%dev` nor `%test`, so `quarkus.otel.sdk.disabled` and
+  `qits.eventstream.enabled=false` are set again here. Dark is still not absent — the outbox
+  datasource opens and migrates, which is why the second `QITS_RESOURCE_*` triple is not optional.
+
+It is also this repo's first **userflow**: the two stories are `@UserStory` methods in category
+`authentication`, so the run also writes `service/target/userstories/` — the proof as documentation,
+with the idp interactions drawn as a sequence diagram. They are **browserless** (an `Interactions`
+parameter and no `Flow`), so the framework's transitive Playwright never launches anything. The
+class orderer is installed the one way Quarkus permits — the
+`junit.quarkus.orderer.secondary-orderer` line in `service`'s test properties; a local
+`junit-platform.properties` hard-fails surefire.
+
+The denied story carries the claim no sibling repo's copy of it can: after the 401s for an unknown
+key and a foreign audience, an **impeccable token that is another module's** is refused 403 on this
+owner's rows and served 200 on its own. That is `OwnerGuard` — the one door of the three that is
+this service's own decision — proved through real validation rather than through a fake identity.
+
+`.config/qits/ci-event-userflows.yml` publishes the reports per commit as the docs bundle
+`@userflows/qits-containers`, and is **non-gating by design**: it is a separate file from
+`ci-post-receive.yml` so a red story does not cost the branch its image. It is the only one of the
+three pipelines with no image step and no docker at all, and the only one that needs no
+`-Dquarkus.quinoa=false` — this service is machine-facing and carries no client.
