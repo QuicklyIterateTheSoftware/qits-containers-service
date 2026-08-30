@@ -105,11 +105,11 @@ exempt, including the ones that "cannot" block.
 - **The fakes are duplicated per module, not shared.** Maven has no `testFixtures`, and a test-jar
   dependency between modules that otherwise have none is the higher price. `core`'s
   `FakeContainersDriver` is the original; a module that needs one copies it. Same stance as
-  qits-workspaces' two `FakeContainerRuntime`s and qits-ci's two `FakeCiStepRunner`s. **The
-  `service` copy is an `@Alternative` with no priority**, because that module ships the real driver:
-  an ordinary bean would be an ambiguous resolution and a globally enabled alternative would take
-  the daemon away from the one test that needs it, so each suite names the driver it means in its
-  profile's `getEnabledAlternatives()`.
+  qits-workspaces-service's two `FakeContainerRuntime`s and qits-ci-service's two
+  `FakeCiStepRunner`s. **The `service` copy is an `@Alternative` with no priority**, because that
+  module ships the real driver: an ordinary bean would be an ambiguous resolution and a globally
+  enabled alternative would take the daemon away from the one test that needs it, so each suite
+  names the driver it means in its profile's `getEnabledAlternatives()`.
 - **Every route is guarded, reads included** — and it is guarded **twice**. The rest of the fleet
   guards its writes and leaves its reads open because a person reads through the gateway; nothing
   here is read by a person, and an inventory of running containers is as much a module's own as the
@@ -193,8 +193,8 @@ place. Without the flush the wrap reports rather than helps. The budget is
 **Nothing in `control` sets a causation id.** The table's one insert is `ensure`, on the caller's own
 thread, where `@PrePersist` still sees the ambient scope — measured, and `CtCausationStampTest` is
 the measurement. A writer that ever **inserts** a row from a background thread must set the cause as
-data (`CausedRow.causationId(UUID)`), the way qits-ci's `CiRun` does across its queue hop, and never
-ship a stamp that writes nothing.
+data (`CausedRow.causationId(UUID)`), the way qits-ci-service's `CiRun` does across its queue hop,
+and never ship a stamp that writes nothing.
 
 **The Clock is injected and this module produces none.** The qits-eventstream jar ships a
 `@DefaultBean` `java.time.Clock` for the whole platform, and a second default producer of the same
@@ -208,9 +208,9 @@ type, so nothing in `core` imports an eventstream class for it.
 
 ## The data plane, and the two rules it is under
 
-`service/…/proxy/` is the reverse tunnel, ported from qits-projects' `AgentTunnels` and
-qits-workspaces' `WorkspaceTunnels` — near-identical twins whose javadocs carry the measurements and
-are reproduced rather than summarized. README's "The data plane" says what it is and what round 2
+`service/…/proxy/` is the reverse tunnel, ported from qits-projects-service's `AgentTunnels` and
+qits-workspaces-service's `WorkspaceTunnels` — near-identical twins whose javadocs carry the
+measurements and are reproduced rather than summarized. README's "The data plane" says what it is and what round 2
 owes; these are the two rules you can break without the build noticing.
 
 **1. `TunnelProtocol` is APPEND-ONLY.** Every constant in it — both paths, both frame names, the
@@ -322,9 +322,9 @@ probe-skip semantics are the part to get right. `artifacts:` declares three thin
 jars and the image — because a declaration is a claim about what **this script pushes**, and qits-ci
 announces one `SoftwareRelease` per entry without being able to see what a step really did.
 `qits-containers-service` is not declared, because nothing uploads it; the deployable ships as the
-image. qits-githost's file is the same rule pointing the other way and is worth reading beside this
-one: it publishes library jars, does not push them from its release pipeline, and therefore does not
-declare them.
+image. qits-githost-service's file is the same rule pointing the other way and is worth reading
+beside this one: it publishes library jars, does not push them from its release pipeline, and
+therefore does not declare them.
 
 The jar step is skip-if-published, and **the two probes are AND-chained on purpose**. `deploy` runs
 across one reactor and ships both modules together, so a version with one module missing has to go

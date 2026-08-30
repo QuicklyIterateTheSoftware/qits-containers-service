@@ -187,8 +187,8 @@ registered them or not — which is why the list is written down here rather tha
 ## The data plane
 
 **A container that dials home can be reached, and it needs no address of its own.** This is the
-reverse tunnel qits-workspaces and qits-projects each carry a copy of, ported here once
-(`service/…/proxy/`) and **switched off**: `qits.containers.proxy.enabled` ships `false`.
+reverse tunnel qits-workspaces-service and qits-projects-service each carry a copy of, ported here
+once (`service/…/proxy/`) and **switched off**: `qits.containers.proxy.enabled` ships `false`.
 
     ws  /containers/tunnel/{rowId}          the control socket, dialled by the container
     ws  /containers/tunnel/stream/{nonce}   the dial-back, one per parked connection
