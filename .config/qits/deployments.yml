@@ -14,6 +14,16 @@
 # built branch.
 deployment_target: environment
 
+# WHAT THIS REPOSITORY DEPLOYS AS, held still across the repository rename. The repository is
+# qits-containers-service now; the application is still qits-containers, so nothing that is running
+# moves: the swarm service and its wire alias, the container, the image qits/qits-containers the
+# build pushes, the provisioned database, the derived host label, the extras family and the
+# QITS_APPLICATION the container boots with all keep the names they have. Omitted, this name would
+# be DERIVED from the repository, and the rename would read as a decommission plus a new application
+# rather than a rename. Changing the value later is exactly that decommission, so it does not change
+# again.
+application: qits-containers
+
 # TWO DATABASES, because this application opens two datasources with two Flyway lineages.
 # qits-deployments creates a login role and a database for each on the postgres of this tier before
 # the container starts and injects QITS_RESOURCE_<NAME>_URL / _USERNAME / _PASSWORD — the generic

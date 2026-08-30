@@ -22,7 +22,7 @@
 # the image, and nothing uploads its jar.
 event: SCMRelease
 when:
-  - repository: { exact: qits-containers }
+  - repository: { exact: qits-containers-service }
 artifacts:
   - { type: maven, name: "eu.wohlben.qits:qits-containers-core" }
   - { type: maven, name: "eu.wohlben.qits:qits-containers-client" }

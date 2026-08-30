@@ -6,7 +6,11 @@
 # that run is non-gating, a red verify must not cost the image.
 event: SCMPublishCommit
 when:
-  - repoId: { exact: qits-containers }
+  # repoName, not repoId: the git host's own coordinate can be an opaque UUID since the
+  # identity cutover, so a name match on repoId is not dependable. The push event echoes the
+  # public name the push was addressed with, which always is; a rename updates this line in
+  # the same campaign.
+  - repoName: { exact: qits-containers-service }
     suppressCi: { exact: "false" }
 checkout:
   branch: branch
