@@ -33,6 +33,10 @@ steps:
       # cannot switch user at all, and without CAP_CHOWN even root cannot chown. Measured 2026-08-12,
       # the first time this step ran: `chown: /workspace: Operation not permitted`.
       export QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL"
+      # Maven Central through the platform mirror's in-network alias — empty (an older qits-ci that
+      # injects nothing, or a deployment that turned the mirror plane off) deactivates the settings
+      # profile and Central is resolved directly.
+      export QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}"
       ./mvnw -B -ntp -s .qits-maven-settings.xml verify \
         -Dqits.maven.repository.url="$QITS_MAVEN_REPOSITORY_URL"
 
@@ -66,6 +70,7 @@ steps:
       ref="$QITS_REGISTRY/$QITS_IMAGE_REPOSITORY/qits-containers:$QITS_CI_SHA"
       docker build --network host \
         --build-arg QITS_MAVEN_REPOSITORY_URL="http://$QITS_REGISTRY/artifacts/maven/maven" \
+        --build-arg QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_CENTRAL_MIRROR_URL:-}" \
         --secret id=qits-client-id,env=QITS_COMMISSIONED_CLIENT_ID \
         --secret id=qits-client-secret,env=QITS_COMMISSIONED_CLIENT_SECRET \
         -t "$ref" -f docker/Dockerfile .
