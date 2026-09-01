@@ -28,7 +28,7 @@
          monorepo and no parent to inherit from. -->
     <groupId>eu.wohlben.qits</groupId>
     <artifactId>qits-containers</artifactId>
-    <version>2026.829.231527</version>
+    <version>2026.901.182959</version>
     <packaging>pom</packaging>
     <name>qits-containers</name>
 

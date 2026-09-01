@@ -110,6 +110,14 @@ COPY . .
 ARG QITS_MAVEN_REPOSITORY_URL=http://registry.dev.localhost:8080/artifacts/maven/maven
 ENV QITS_MAVEN_REPOSITORY_URL=$QITS_MAVEN_REPOSITORY_URL
 #
+# --- and where Maven Central is mirrored, when it is ----------------------------------------------
+# The pipeline passes the platform's pull-through (qits-platform-mirror's central proxy, the same
+# authority the FROM lines above pull through); EMPTY — the default — means direct Maven Central.
+# `.qits-maven-settings.xml` activates its central-proxy profile only on a non-empty value, so a
+# bootstrap or hand build that passes nothing resolves exactly as it always did.
+ARG QITS_MAVEN_CENTRAL_URL=
+ENV QITS_MAVEN_CENTRAL_URL=$QITS_MAVEN_CENTRAL_URL
+#
 # The same settings file also carries the CREDENTIAL, and the two secret mounts below are where it
 # comes from: they put the CI run's commissioned client into THIS `RUN`'s environment and nowhere
 # else — not a layer, not the image history, which is what a `--build-arg` could never promise on a
