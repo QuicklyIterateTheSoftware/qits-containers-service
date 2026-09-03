@@ -61,8 +61,8 @@
              postgresql datasource is missing a line of that block. They move together: the rule
              names the driver as a string, so a driver that moved without the rule would pass a
              build it should fail. -->
-        <qits.db-core.version>2026.817.175344</qits.db-core.version>
-        <qits.arch-rules.version>2026.817.175344</qits.arch-rules.version>
+        <qits.db-core.version>2026.902.53026</qits.db-core.version>
+        <qits.arch-rules.version>2026.902.53026</qits.arch-rules.version>
 
         <!-- Machine identity, released out of the same libs/qits-integrations-quarkus train. It is
              the fourth platform jar this repo takes and the one AGENTS.md's "nothing else may
@@ -72,14 +72,14 @@
              answer invented here would be the interim static token the platform has a standing
              decision against. It brings no server and no transport: quarkus-oidc validates the
              bearer and this jar only reads the identity that validation leaves behind. -->
-        <qits.auth-core.version>2026.817.175344</qits.auth-core.version>
+        <qits.auth-core.version>2026.902.53026</qits.auth-core.version>
 
         <!-- The platform event bus client. It is here from the scaffold rather than from the first
              event, because it brings the causation persistence trio (CausedRow, CausationStamp,
              @Uncaused) that every row this service writes has to decide about — see ArchRulesTest —
              and its own datasource, persistence unit and Flyway lineage. Adding it later would be a
              flag day: a second store appears in the deployment spec and in every suite at once. -->
-        <qits.eventstream.version>2026.825.74539</qits.eventstream.version>
+        <qits.eventstream.version>2026.902.231856</qits.eventstream.version>
 
         <!-- The user-story framework (test scope). This repository's userflow catalogue is six IT
              classes on one profile — api/TokenValidationBootstrapIT plus service/…/stories/** — so
@@ -89,14 +89,14 @@
              StoryNetworkFilter this repo used to carry. It has a version of its own rather than
              riding the three above, because it is released out of libs/qits-userflows and not out
              of the qits-integrations-quarkus reactor. -->
-        <qits.userflows.version>2026.829.201516</qits.userflows.version>
+        <qits.userflows.version>2026.902.53027</qits.userflows.version>
 
         <!-- The recording service mocks the same IT boots against (the generic MockService plus
              idp.MockIdp), released out of libs/qits-integrations-quarkus like qits-db-core,
              qits-arch-rules and qits-auth-core above — so the same-string policy those three follow
              applies the day this repo consumes a newer reactor, and until then this names the
              release the mock idp arrived in. -->
-        <qits.service-mock.version>2026.829.201505</qits.service-mock.version>
+        <qits.service-mock.version>2026.902.53026</qits.service-mock.version>
 
         <qits.maven.repository.url>http://registry.dev.localhost:8080/artifacts/maven/maven</qits.maven.repository.url>
 
