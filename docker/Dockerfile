@@ -128,7 +128,24 @@ RUN --mount=type=secret,id=qits-client-id,env=QITS_MAVEN_AUTH_USR \
     --mount=type=secret,id=qits-client-secret,env=QITS_MAVEN_AUTH_PSW \
     ./mvnw -B -ntp -s .qits-maven-settings.xml -pl service -am package -Dnative -DskipTests \
       -Dqits.maven.repository.url="$QITS_MAVEN_REPOSITORY_URL" \
-      -Dquarkus.native.native-image-xmx=4g
+      -Dquarkus.native.native-image-xmx=4g \
+      org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeBom \
+      -DoutputFormat=json -DoutputName=sbom -DschemaVersion=1.6 \
+      -Dcyclonedx.skipNotDeployed=false
+# cyclonedx.skipNotDeployed=false is LOAD-BEARING, measured on qits-artifacts' first SBOM release
+# (2026.902.45658): the service module skips maven-deploy — it ships as this image, not as a jar —
+# and the plugin SKIPS deploy-skipping modules by default, with a green build and one INFO line. The
+# sbom stage's COPY then fails on a file nothing wrote. The property spelling matters too: the bare
+# -DskipNotDeployed=false is silently ignored; only the cyclonedx.-prefixed one reaches the plugin.
+
+# --- sbom -----------------------------------------------------------------------------------------
+# Not part of the runtime image: a `FROM scratch` holding only the service module's CycloneDX
+# document, so the release step can lift it out with `--target sbom --output type=local` using the
+# SAME args and secrets as the image build — every layer above is then a cache hit and the export
+# costs seconds. `makeBom` rides on the mvnw invocation above rather than a second one, for the same
+# cache reason — one RUN, one layer, one truth.
+FROM scratch AS sbom
+COPY --from=build /src/service/target/sbom.json /sbom.json
 
 # --- runtime --------------------------------------------------------------------------------------
 # `mirror.dev.localhost:8080/redhat/…` is the same mirror, pointed at registry.access.redhat.com.

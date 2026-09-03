@@ -100,6 +100,28 @@ steps:
         -Dqits.maven.repository.url="$QITS_MAVEN_REGISTRY_URL" \
         -DaltDeploymentRepository="qits::default::$QITS_MAVEN_REGISTRY_URL"
 
+      # Bill of materials AFTER the publish, BEFORE this step can exit 0: qits-ci announces
+      # `SoftwareRelease` only for a green run, so ordering is the whole guarantee — no consumer is
+      # ever told about a version whose SBOM is missing, and a failed PUT fails the release ON
+      # PURPOSE. `makeBom` runs over the two jar modules only: the root is a parent pom, it carries
+      # no dependencies of its own and `artifacts:` above does not declare it. The plugin is named
+      # fully qualified and pinned on the CLI — zero pom edits — and resolves through the same
+      # settings mirror and repository property the deploy above used.
+      ./mvnw -B -ntp -s .qits-maven-settings.xml -pl core,client -DskipTests \
+        org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeBom \
+        -DoutputFormat=json -DoutputName=sbom -DschemaVersion=1.6 \
+        -Dqits.maven.repository.url="$QITS_MAVEN_REGISTRY_URL"
+      # The SBOM store is a sibling path of the maven registry inside the same qits-artifacts
+      # deployment, so its root is DERIVED from the injected address rather than written down — the
+      # same discipline every other address in this file follows. One PUT per declared artifact:
+      # (packageType, packageName, version) verbatim is how the SoftwareRelease consumer asks.
+      sbom_base="${QITS_MAVEN_REGISTRY_URL%%/artifacts/*}/artifacts/sboms"
+      for module in core client; do
+        curl -fsS -X PUT -H 'Content-Type: application/vnd.cyclonedx+json' \
+          --data-binary @"$module/target/sbom.json" \
+          "$sbom_base/maven/eu.wohlben.qits:qits-containers-$module/-/$version"
+      done
+
     # --- step 2: the image ------------------------------------------------------------------------
     # ci-base: the docker CLI builds and pushes, git fetches the tag, jq reads the event payload.
   - image: qits/build-images/ci-base:latest
@@ -139,3 +161,29 @@ steps:
       # cache either way — while under the containerd image store it drops the last reference to
       # content a concurrent build of this same Dockerfile may still be resolving, which is the
       # race that broke the release of 2026-08-11.
+
+      # Bill of materials AFTER the push, BEFORE this step can exit 0: qits-ci announces
+      # `SoftwareRelease` only for a green run, so no consumer is ever told about a version whose
+      # SBOM is missing, and a failed PUT fails the release ON PURPOSE. The second `docker build`
+      # reaches the Dockerfile's `sbom` stage — a `FROM scratch` holding only the service module's
+      # CycloneDX document, exported with `--output` instead of pushed. Args and secrets are
+      # BYTE-IDENTICAL to the image build above, which is what makes every layer a cache hit and
+      # this export seconds rather than a second native compile; a drift between the two
+      # invocations costs a full rebuild, not a wrong document.
+      docker build --network host --target sbom --output type=local,dest=.sbom \
+        --build-arg QITS_MAVEN_REPOSITORY_URL="http://$QITS_REGISTRY/artifacts/maven/maven" \
+        --build-arg QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_CENTRAL_MIRROR_URL:-}" \
+        --secret id=qits-client-id,env=QITS_COMMISSIONED_CLIENT_ID \
+        --secret id=qits-client-secret,env=QITS_COMMISSIONED_CLIENT_SECRET \
+        -f docker/Dockerfile .
+      # The SBOM store is a sibling path of the npm registry inside this very deployment, so its
+      # root is DERIVED from $QITS_NPM_REGISTRY_URL — the qits-net alias a STEP container can
+      # reach. NOT from $QITS_REGISTRY: that is the host-published name the docker DAEMON pushes
+      # through, and inside a step container it answers curl with an instant connection refusal
+      # (measured on qits-artifacts' 2026.902 heal release). The path names the DECLARED artifact
+      # identity verbatim: `artifacts:` above says `{type: docker, name: qits/qits-containers}`,
+      # and (packageType, packageName, version) is how the SoftwareRelease consumer will ask.
+      sbom_base="${QITS_NPM_REGISTRY_URL%%/artifacts/*}/artifacts/sboms"
+      curl -fsS -X PUT -H 'Content-Type: application/vnd.cyclonedx+json' \
+        --data-binary @.sbom/sbom.json \
+        "$sbom_base/docker/qits/qits-containers/-/$version"
