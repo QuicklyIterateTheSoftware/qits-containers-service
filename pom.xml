@@ -28,7 +28,7 @@
          monorepo and no parent to inherit from. -->
     <groupId>eu.wohlben.qits</groupId>
     <artifactId>qits-containers</artifactId>
-    <version>2026.903.205602</version>
+    <version>2026.904.35940</version>
     <packaging>pom</packaging>
     <name>qits-containers</name>
 
@@ -79,7 +79,7 @@
              @Uncaused) that every row this service writes has to decide about — see ArchRulesTest —
              and its own datasource, persistence unit and Flyway lineage. Adding it later would be a
              flag day: a second store appears in the deployment spec and in every suite at once. -->
-        <qits.eventstream.version>2026.902.231856</qits.eventstream.version>
+        <qits.eventstream.version>2026.903.85121</qits.eventstream.version>
 
         <!-- The user-story framework (test scope). This repository's userflow catalogue is six IT
              classes on one profile — api/TokenValidationBootstrapIT plus service/…/stories/** — so
