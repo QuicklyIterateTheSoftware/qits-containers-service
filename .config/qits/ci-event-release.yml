@@ -2,14 +2,15 @@
 # VERSION. qits-githost's and qits-platform-dns' file in shape — see those repositories for the long
 # form of each rule; the short form of the five that bite:
 #
-# - The selection naming this repository is not a loop: SCMRelease comes from qits-workspaces, and
-#   nothing in this file publishes it.
+# - The selection naming this repository is not a loop: SCMRelease comes from qits-projects' Auto
+#   Release, and nothing in this file publishes it. It is SCMRelease and not SCMPublishTag, because
+#   qits-githost's tag primitive fires no post-receive and announces nothing.
 # - `artifacts:` is a declaration, not a report — qits-ci announces one SoftwareRelease per entry on
 #   the strength of it, and cannot see what a step pushed. It declares what THIS script pushes, and
 #   here that is THREE things: the two library jars and the image. Keep it true.
 # - The names are unqualified on purpose; the reader supplies its own registry host.
-# - The image build below is ci-post-receive.yml's, and the two must stay matched: one image
-#   content, two coordinates. That includes --network and --build-arg, which this repository needs
+# - The image build below is the QA pipeline's, and the two must stay matched: one image content,
+#   built at the fold and published here. That includes --network and --build-arg, which this repository needs
 #   because its four platform jars live only in the platform's own Maven repository.
 # - This file is inert until an SCMRelease for this repository exists, and it lands first on purpose
 #   — the bus is at-most-once, so the trigger must precede the event it selects.
@@ -32,7 +33,7 @@ steps:
     # maven-base rather than ci-base, and that is the whole reason this release is two steps rather
     # than one. A `deploy` needs a JDK and ci-base is `docker:cli` plus bash/curl/git/jq — no java
     # anywhere — while maven-base carries no docker CLI. No build image has both, so the two halves
-    # take the two images, exactly as ci-post-receive.yml does. Each step is its own container with
+    # take the two images, exactly as ci-event-release-request.yml does. Each step is its own container with
     # its own clone, so each does its own version read and its own tag checkout.
   - image: qits/build-images/maven-base:latest
     timeout-seconds: 1800
@@ -141,14 +142,14 @@ steps:
       git fetch "$QITS_CI_REPOSITORY_URL" "refs/tags/$version:refs/tags/$version"
       git checkout --detach "$version"
 
-      # Same host doctrine as ci-post-receive.yml: --network host, NOT a custom network, because
+      # Same host doctrine as ci-event-release-request.yml: --network host, NOT a custom network, because
       # buildkit refuses custom networks on a build; and the maven address derived from the same
       # injected env the image tag uses, or the platform jars cannot be resolved inside the build.
       # And the same credential doctrine: a SECRET MOUNT, never a build arg, because an arg is
       # recorded in the history of a pullable image. The launcher injects the run's commissioned idp
       # client as $QITS_COMMISSIONED_CLIENT_ID/$QITS_COMMISSIONED_CLIENT_SECRET. Unconditional — a
       # missing env source is NOT a buildx error, measured on v0.36.1 — so it is inert until a run
-      # carries the pair. ci-post-receive.yml has the same two flags; keep them matched.
+      # carries the pair. ci-event-release-request.yml has the same two flags; keep them matched.
       ref="$QITS_REGISTRY/$QITS_IMAGE_REPOSITORY/qits-containers:$version"
       docker build --network host \
         --build-arg QITS_MAVEN_REPOSITORY_URL="http://$QITS_REGISTRY/artifacts/maven/maven" \

@@ -309,9 +309,9 @@ client meets speaks HTTP/1.1, so that assertion would pass with the `version(...
 
 `README.md`'s "Deploying it" has the shape. Two things about `.config/qits/` are this file's.
 
-**The two that produce an image are two steps, and no build image would let them be one.** (The
-third, `ci-event-userflows.yml`, produces documentation and is one step on `maven-base` — see the
-section below.) A `./mvnw` needs a JDK
+**The suite and the image are two steps, and no build image would let them be one.** (The QA
+pipeline's third step produces documentation and is one step on `maven-base` — see the section
+below.) A `./mvnw` needs a JDK
 and `ci-base` is `docker:cli` plus bash/curl/git/jq; `maven-base` carries no docker CLI. So the
 suite runs on one image and the image build on the other. Each step is its own container with its
 own clone, which is why the release pipeline's two steps each read the version and check out the tag
@@ -343,9 +343,9 @@ that is wanted.
 
 Thirteen `@UserStory` methods across six `@QuarkusIntegrationTest` classes, all on **one**
 `@TestProfile` and therefore **one** launched fast-jar. The run writes `service/target/userstories/`
-— the proof as documentation, a network diagram beside the steps — and
-`.config/qits/ci-event-userflows.yml` publishes it per commit as the docs bundle
-`@userflows/qits-containers`.
+— the proof as documentation, a network diagram beside the steps — and the last step of
+`.config/qits/ci-event-release-request.yml` publishes it as the docs bundle
+`@userflows/qits-containers`, once per release-request fold.
 
     api/TokenValidationBootstrapIT      authentication   the packaged boot with the OIDC tenant ON
     stories/boot/HostBootstrapIT        startup          what the boot does to the host
@@ -445,15 +445,15 @@ is worse than the gap.
   datasource opens and migrates, which is why the second `QITS_RESOURCE_*` triple is not optional.
 - **The ITs are opted in by NAME, not by `skipITs`.** The root pom keeps `skipITs=true`, because
   failsafe has one run per module and flipping it would turn `ContainersRestartAdoptionIT` back on
-  with it. Run them — and `.config/qits/ci-event-userflows.yml` runs them — as
+  with it. Run them — and the last step of `.config/qits/ci-event-release-request.yml` runs them — as
 
       ./mvnw verify -DskipITs=false \
         -Dit.test=TokenValidationBootstrapIT,HostBootstrapIT,WorkloadLifecycleIT,OwnershipBoundaryIT,WorkloadReapIT,AccessRefusalIT
 
-  That pipeline is **non-gating by design**: it is a separate file from `ci-post-receive.yml` so a
-  red story does not cost the branch its image. It is the only one of the three pipelines with no
-  image step and no docker at all, and the only one that needs no `-Dquarkus.quinoa=false` — this
-  service is machine-facing and carries no client.
+  That step is **non-gating by design**: it carries `gating: false`, so a red story fails the run and
+  shows red without holding the release request's build gate. It is the only step in that pipeline
+  with no image build and no docker at all, and the only one that needs no `-Dquarkus.quinoa=false` —
+  this service is machine-facing and carries no client.
 
 ## `ContainersPackagedSurfaceIT` is RED, and it was red before the catalogue
 

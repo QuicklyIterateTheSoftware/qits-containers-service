@@ -302,18 +302,21 @@ a body that forgot the field **is** a dry run.
 
 ## Deploying it
 
-A push builds `docker/Dockerfile` — a Mandrel builder stage that native-compiles `service`, a
-`ubi-minimal` runtime stage that carries the binary **and the docker CLI** — and pushes it as
-`qits/qits-containers:<sha>`; a release rebuilds the same content under the released version
-(`.config/qits/ci-post-receive.yml` and `.config/qits/ci-event-release.yml`). Both builds run
-`--network host` with `--build-arg QITS_MAVEN_REPOSITORY_URL=…`, because the four platform jars this
-repo takes exist only in the platform's own Maven repository and a docker build reaches no other
-address for them.
+Nothing builds on a push any more. **Releasing is opening a release request** — `POST
+/projects/api/repositories/<repoId>/release-requests` — which folds the named branches onto
+`release/<id>`; `.config/qits/ci-event-release-request.yml` builds that fold and its green gating
+verdict is what lets qits-projects stamp the CalVer, tag, and publish `SCMRelease`. Only then does
+`.config/qits/ci-event-release.yml` build `docker/Dockerfile` — a Mandrel builder stage that
+native-compiles `service`, a `ubi-minimal` runtime stage that carries the binary **and the docker
+CLI** — and push it as `qits/qits-containers:<version>`. Both files' builds run `--network host`
+with `--build-arg QITS_MAVEN_REPOSITORY_URL=…`, because the four platform jars this repo takes exist
+only in the platform's own Maven repository and a docker build reaches no other address for them.
 
-**Each pipeline is two steps**, because no build image carries both a JDK and the docker CLI: the
-suite runs on `maven-base`, the image build on `ci-base`. The release pipeline publishes **three**
-things — `qits-containers-core`, `qits-containers-client` and the image — which makes it the
-platform's first dual maven+docker release; `AGENTS.md` says what that costs.
+**Neither pipeline can be one step**, because no build image carries both a JDK and the docker CLI:
+the suite runs on `maven-base`, the image build on `ci-base`. The QA pipeline adds a third,
+non-gating step for the userflow bundle. The release pipeline publishes **three** things —
+`qits-containers-core`, `qits-containers-client` and the image — which makes it the platform's first
+dual maven+docker release; `AGENTS.md` says what that costs.
 
 `.config/qits/deployments.yml` is the deploy answer: **an environment service**, with
 `resources: postgresql:db, postgresql:eventstream:qits_containers_eventstream` and the health gate at
