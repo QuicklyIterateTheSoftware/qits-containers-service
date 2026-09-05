@@ -47,6 +47,7 @@ public class PlatformBuildkitTest {
     buildkit.keepStorageBytes = 20_000_000_000L;
     buildkit.pidsLimit = 4096;
     buildkit.oomScoreAdj = 500;
+    buildkit.execNameservers = List.of("127.0.0.11");
   }
 
   @Test
@@ -176,6 +177,8 @@ public class PlatformBuildkitTest {
           networkMode = "host"
           gc = true
           gckeepstorage = 20000000000
+        [dns]
+          nameservers = ["127.0.0.11"]
         [registry."registry.dev.localhost:8080"]
           mirrors = ["dev-qits-artifacts:8080"]
         [registry."mirror.dev.localhost:8080"]

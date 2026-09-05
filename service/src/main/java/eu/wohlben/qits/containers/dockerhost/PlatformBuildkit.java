@@ -98,6 +98,10 @@ public class PlatformBuildkit {
   @ConfigProperty(name = "qits.containers.buildkit.oom-score-adj")
   int oomScoreAdj;
 
+  /** What an exec resolves names with — see the config file's argument for the loopback default. */
+  @ConfigProperty(name = "qits.containers.buildkit.exec-nameservers")
+  List<String> execNameservers;
+
   void onStart(@Observes @Priority(BootSweep.PLATFORM_BUILDER_PRIORITY) StartupEvent event) {
     if (LaunchMode.current() != LaunchMode.NORMAL || !enabled) {
       return;
@@ -222,6 +226,20 @@ public class PlatformBuildkit {
     toml.append("[worker.oci]\n  networkMode = \"host\"\n  gc = true\n  gckeepstorage = ")
         .append(keepStorageBytes)
         .append("\n");
+    // networkMode puts the exec IN the right namespace; this is what lets it RESOLVE there.
+    // BuildKit writes each exec's resolv.conf by filtering loopback nameservers out of its own —
+    // reasonable for a sandbox namespace that cannot reach them, wrong for ours, where docker's
+    // embedded DNS on 127.0.0.11 is exactly what serves the platform aliases. Measured 2026-09-05:
+    // with networkMode=host alone, an exec still died on `qits-platform-mirror: Name or service
+    // not known`. The [dns] section overrides the generated file, and the embedded DNS forwards
+    // anything it does not own upstream, so public names keep resolving too.
+    if (!execNameservers.isEmpty()) {
+      toml.append("[dns]\n  nameservers = [");
+      for (int i = 0; i < execNameservers.size(); i++) {
+        toml.append(i == 0 ? "\"" : ", \"").append(execNameservers.get(i)).append("\"");
+      }
+      toml.append("]\n");
+    }
     for (String mirror : registryMirrors) {
       int split = mirror.indexOf('=');
       if (split <= 0 || split == mirror.length() - 1) {
