@@ -173,6 +173,7 @@ public class PlatformBuildkitTest {
     assertEquals(
         """
         [worker.oci]
+          networkMode = "host"
           gc = true
           gckeepstorage = 20000000000
         [registry."registry.dev.localhost:8080"]

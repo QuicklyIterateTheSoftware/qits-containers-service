@@ -213,7 +213,15 @@ public class PlatformBuildkit {
    */
   String buildkitdToml() {
     StringBuilder toml = new StringBuilder();
-    toml.append("[worker.oci]\n  gc = true\n  gckeepstorage = ").append(keepStorageBytes).append("\n");
+    // networkMode = "host" is host relative to the BUILDER CONTAINER, not the machine: a RUN
+    // executes in buildkitd's own network namespace on the platform network, where the in-network
+    // routes a build dials ($QITS_MAVEN_PROXY_URL) resolve through docker's embedded DNS. The
+    // default sandbox namespace has no DNS at all — measured 2026-09-05 on the first re-fired
+    // release run, whose mvnw died on `qits-platform-mirror: Name or service not known` after
+    // every base pull had already succeeded (pulls are the daemon's, execs are the worker's).
+    toml.append("[worker.oci]\n  networkMode = \"host\"\n  gc = true\n  gckeepstorage = ")
+        .append(keepStorageBytes)
+        .append("\n");
     for (String mirror : registryMirrors) {
       int split = mirror.indexOf('=');
       if (split <= 0 || split == mirror.length() - 1) {
