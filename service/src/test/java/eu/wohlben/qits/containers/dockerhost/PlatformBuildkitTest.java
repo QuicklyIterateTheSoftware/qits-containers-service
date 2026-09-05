@@ -133,10 +133,24 @@ public class PlatformBuildkitTest {
             .env("QITS_CI_SHA", "cafebabe")
             .build();
 
-    ContainerSpec handed = buildkit.handOut(spec);
+    ContainerSpec handed = buildkit.handOut("workspace", spec);
 
     assertEquals("tcp://qits-buildkitd:1234", handed.env().get("BUILDKIT_HOST"));
     assertEquals("cafebabe", handed.env().get("QITS_CI_SHA"), "everything else rides unchanged");
+  }
+
+  @Test
+  public void aCiStepIsHandedTheAddressWithNoSocketAtAll() {
+    // The build:true arm: a step that builds through the platform builder holds no socket, so the
+    // workload name is what identifies it. The address is discovery, not privilege — every
+    // container on the network can dial the alias anyway.
+    ContainerSpec spec =
+        ContainerSpec.builder("qits/build-images/ci-base:latest").network("qits-net").build();
+
+    ContainerSpec handed = buildkit.handOut("ci-step", spec);
+
+    assertEquals("tcp://qits-buildkitd:1234", handed.env().get("BUILDKIT_HOST"));
+    assertFalse(handed.hostDockerSocket(), "the address must never imply the socket");
   }
 
   @Test
@@ -150,14 +164,14 @@ public class PlatformBuildkitTest {
             .env("BUILDKIT_HOST", "")
             .build();
 
-    assertSame(spec, buildkit.handOut(spec));
+    assertSame(spec, buildkit.handOut("ci-step", spec));
   }
 
   @Test
-  public void aSpecWithoutTheSocketIsNotABuildAndGetsNoAddress() {
+  public void aSocketlessNonStepWorkloadGetsNoAddress() {
     ContainerSpec spec = ContainerSpec.builder("img").network("qits-net").build();
 
-    assertSame(spec, buildkit.handOut(spec));
+    assertSame(spec, buildkit.handOut("workspace", spec));
   }
 
   @Test
@@ -166,7 +180,7 @@ public class PlatformBuildkitTest {
     ContainerSpec spec =
         ContainerSpec.builder("img").network("qits-net").hostDockerSocket(true).build();
 
-    assertSame(spec, buildkit.handOut(spec));
+    assertSame(spec, buildkit.handOut("ci-step", spec));
   }
 
   @Test

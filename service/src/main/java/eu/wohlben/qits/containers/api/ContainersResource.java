@@ -115,10 +115,10 @@ public class ContainersResource {
     if (request == null) {
       throw new IllegalArgumentException("Invalid request: no body");
     }
-    // A workload that declared the socket is a workload that builds, so the platform builder's
-    // address rides in beside it — unless the caller sent the key, whose value (empty included)
-    // wins. The rule and its reasons are PlatformBuildkit's.
-    ContainerSpec spec = buildkit.handOut(ContainersWire.toSpec(request.spec()));
+    // Every CI step — and any socket-holding workload — is handed the platform builder's address,
+    // unless the caller sent the key, whose value (empty included) wins. The rule and its reasons
+    // are PlatformBuildkit's.
+    ContainerSpec spec = buildkit.handOut(workload, ContainersWire.toSpec(request.spec()));
     LifecyclePolicy policy = ContainersWire.toPolicy(request.policy());
 
     ContainerRegistry.Ensured ensured =

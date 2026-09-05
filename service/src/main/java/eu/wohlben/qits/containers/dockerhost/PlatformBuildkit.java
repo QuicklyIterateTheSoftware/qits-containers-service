@@ -44,13 +44,16 @@ import org.jboss.logging.Logger;
  * docker not answering at boot is the ordinary state of a rebooted host, and the builds will name
  * the missing builder loudly enough.
  *
- * <p><b>{@code handOut} is the address's one exit.</b> A workload that declared the docker socket
- * is a workload that builds, so it is handed {@code BUILDKIT_HOST} beside the socket — unless the
- * caller sent the key itself, and the caller's value wins <em>including an empty one</em>: qits-ci
- * spells "buildkit is switched off" as an empty {@code BUILDKIT_HOST}, the platform's
- * empty-never-absent off value, and this service must not fill a gap that was made on purpose.
- * The address is discovery rather than privilege — the alias resolves for anything on the platform
- * network — so handing it out adds no capability; it removes the reason a build needed the socket.
+ * <p><b>{@code handOut} is the address's one exit.</b> Every CI step container gets
+ * {@code BUILDKIT_HOST} — the {@code ci-step} workload by name, plus any workload that declared
+ * the docker socket (a socket-holder is a builder whoever owns it) — unless the caller sent the
+ * key itself, and the caller's value wins <em>including an empty one</em>: qits-ci spells
+ * "buildkit is switched off" as an empty {@code BUILDKIT_HOST}, the platform's empty-never-absent
+ * off value, and this service must not fill a gap that was made on purpose. Handing the address to
+ * every step rather than only socket-holders is what lets a step build WITHOUT the socket — the
+ * {@code build: true} recipe key, the migration's whole point — and it is safe because the address
+ * is discovery rather than privilege: the alias resolves for anything on the platform network
+ * already, so the variable adds no capability, it removes the reason a build needed the socket.
  */
 @ApplicationScoped
 public class PlatformBuildkit {
@@ -183,8 +186,12 @@ public class PlatformBuildkit {
    * the one place {@code BUILDKIT_HOST} enters a workload. See the class javadoc for the
    * caller-wins rule; the empty map copy is what keeps a spec immutable end to end.
    */
-  public ContainerSpec handOut(ContainerSpec spec) {
-    if (!enabled || !spec.hostDockerSocket() || spec.env().containsKey(BUILDKIT_HOST)) {
+  /** The workload name qits-ci launches steps under — the cross-repo half of the injection rule. */
+  static final String CI_STEP_WORKLOAD = "ci-step";
+
+  public ContainerSpec handOut(String workload, ContainerSpec spec) {
+    boolean builds = spec.hostDockerSocket() || CI_STEP_WORKLOAD.equals(workload);
+    if (!enabled || !builds || spec.env().containsKey(BUILDKIT_HOST)) {
       return spec;
     }
     Map<String, String> env = new LinkedHashMap<>(spec.env());
