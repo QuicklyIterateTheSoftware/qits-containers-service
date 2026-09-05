@@ -23,6 +23,14 @@ public class CtBuildCacheGcTest extends CtTestSupport {
 
   private static final String BUILDER = "buildx_buildkit_qits-bootstrap-builder-v40";
 
+  /**
+   * The platform's own buildkitd is part of every sweep (qits.containers.buildkit.enabled ships
+   * true), first in the list and at the HOST's keep-storage — since the migration off the host
+   * docker it is the platform's build cache, not a bootstrap leftover.
+   */
+  private static final String PLATFORM =
+      eu.wohlben.qits.containers.spec.ContainersIdentifiers.PLATFORM_BUILDER;
+
   private static final long KEEP = 20_000_000_000L;
 
   /** What a bootstrap builder may keep: far less, because it is only useful during a bootstrap. */
@@ -37,16 +45,22 @@ public class CtBuildCacheGcTest extends CtTestSupport {
     driver.scriptBuilderCache(
         BUILDER, new ContainersDriver.CacheResult(true, 27_110_000_000L, "Total: 27.11GB"));
 
+    driver.scriptBuilderCache(
+        PLATFORM, new ContainersDriver.CacheResult(true, 9_000_000_000L, "Total: 9GB"));
+
     BuildCacheGc.Result result = gc.sweep(false, KEEP, KEEP);
 
     assertEquals(103_500_000_000L, result.host().reclaimedBytes());
     assertNull(result.host().error());
-    assertEquals(1, result.builders().size());
-    assertEquals(BUILDER, result.builders().getFirst().container());
-    assertEquals(27_110_000_000L, result.builders().getFirst().reclaimedBytes());
+    assertEquals(2, result.builders().size());
+    assertEquals(PLATFORM, result.builders().getFirst().container());
+    assertEquals(9_000_000_000L, result.builders().getFirst().reclaimedBytes());
+    assertEquals(BUILDER, result.builders().get(1).container());
+    assertEquals(27_110_000_000L, result.builders().get(1).reclaimedBytes());
     assertEquals(
         List.of(
             "pruneBuildCache:" + KEEP,
+            "pruneBuilderCache:" + PLATFORM + ":" + KEEP,
             "listBuildxBuilders",
             "pruneBuilderCache:" + BUILDER + ":" + KEEP),
         driver.calls());
@@ -67,7 +81,11 @@ public class CtBuildCacheGcTest extends CtTestSupport {
         "a du cannot say what a keep-storage prune would free, so nothing is claimed");
     assertNotNull(result.host().detail(), "and what it did see is the answer");
     assertEquals(
-        List.of("describeBuildCache", "listBuildxBuilders", "describeBuilderCache:" + BUILDER),
+        List.of(
+            "describeBuildCache",
+            "describeBuilderCache:" + PLATFORM,
+            "listBuildxBuilders",
+            "describeBuilderCache:" + BUILDER),
         driver.calls());
     assertFalse(driver.calls().stream().anyMatch(call -> call.startsWith("prune")));
   }
@@ -82,11 +100,11 @@ public class CtBuildCacheGcTest extends CtTestSupport {
 
     BuildCacheGc.Result result = gc.sweep(false, KEEP, KEEP);
 
-    assertEquals(2, result.builders().size());
-    assertNotNull(result.builders().getFirst().error());
-    assertEquals(0, result.builders().getFirst().reclaimedBytes());
-    assertNull(result.builders().get(1).error());
-    assertEquals(5_000_000_000L, result.builders().get(1).reclaimedBytes());
+    assertEquals(3, result.builders().size(), "the platform builder rides first, then the two");
+    assertNotNull(result.builders().get(1).error());
+    assertEquals(0, result.builders().get(1).reclaimedBytes());
+    assertNull(result.builders().get(2).error());
+    assertEquals(5_000_000_000L, result.builders().get(2).reclaimedBytes());
   }
 
   @Test
@@ -98,7 +116,7 @@ public class CtBuildCacheGcTest extends CtTestSupport {
 
     assertNotNull(result.host().error());
     assertEquals(0, result.host().reclaimedBytes());
-    assertEquals(1, result.builders().size(), "the builders are a separate question");
+    assertEquals(2, result.builders().size(), "the builders are a separate question");
   }
 
   @Test
@@ -109,19 +127,28 @@ public class CtBuildCacheGcTest extends CtTestSupport {
 
     gc.sweep(false, KEEP, BUILDER_KEEP);
 
+    // The platform builder keeps the HOST's number and a bootstrap builder the caller's smaller
+    // one — the two questions the class javadoc keeps apart.
     assertEquals(
         List.of(
             "pruneBuildCache:" + KEEP,
+            "pruneBuilderCache:" + PLATFORM + ":" + KEEP,
             "listBuildxBuilders",
             "pruneBuilderCache:" + BUILDER + ":" + BUILDER_KEEP),
         driver.calls());
   }
 
   @Test
-  public void aHostWithNoBuilderContainersIsJustTheHostCache() {
+  public void aHostWithNoBuilderContainersStillSweepsThePlatformBuilder() {
     BuildCacheGc.Result result = gc.sweep(false, KEEP, KEEP);
 
-    assertTrue(result.builders().isEmpty());
-    assertEquals(List.of("pruneBuildCache:" + KEEP, "listBuildxBuilders"), driver.calls());
+    assertEquals(1, result.builders().size());
+    assertEquals(PLATFORM, result.builders().getFirst().container());
+    assertEquals(
+        List.of(
+            "pruneBuildCache:" + KEEP,
+            "pruneBuilderCache:" + PLATFORM + ":" + KEEP,
+            "listBuildxBuilders"),
+        driver.calls());
   }
 }

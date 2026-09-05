@@ -62,6 +62,9 @@ public class FakeContainersDriver implements ContainersDriver {
   private final List<VolumeSpec> ensuredVolumes = Collections.synchronizedList(new ArrayList<>());
 
   private final Map<String, Observed> containers = new ConcurrentHashMap<>();
+
+  /** What each container was created from — what {@code imageOf} answers. */
+  private final Map<String, String> containerImages = new ConcurrentHashMap<>();
   private final Map<String, String> logs = new ConcurrentHashMap<>();
   private final Map<String, List<String>> labelListings = new ConcurrentHashMap<>();
   private final Map<String, List<String>> volumeListings = new ConcurrentHashMap<>();
@@ -251,6 +254,49 @@ public class FakeContainersDriver implements ContainersDriver {
   }
 
   @Override
+  public Optional<String> imageOf(String name, Duration timeout) {
+    refuseIfDown("inspect the image of " + name);
+    calls.add("imageOf:" + name);
+    if (!containers.containsKey(name)) {
+      return Optional.empty();
+    }
+    return Optional.of(containerImages.getOrDefault(name, ""));
+  }
+
+  @Override
+  public Started runBuildkitd(
+      String image,
+      String network,
+      String stateVolume,
+      String toml,
+      long pidsLimit,
+      int oomScoreAdj,
+      Duration timeout) {
+    refuseIfDown("run buildkitd");
+    calls.add("runBuildkitd:" + image);
+    String name = eu.wohlben.qits.containers.spec.ContainersIdentifiers.PLATFORM_BUILDER;
+    Observed taken = containers.get(name);
+    if (taken != null) {
+      // Same refusal shape as run(): the name is the state, whatever the script says.
+      return new Started(
+          false,
+          "",
+          "Conflict. The container name \"/" + name + "\" is already in use by " + taken.id());
+    }
+    if (nextRun.started()) {
+      containers.put(name, new Observed(nextRun.containerId(), "running", "none", Instant.EPOCH));
+      containerImages.put(name, image);
+    }
+    return nextRun;
+  }
+
+  /** Seeds a container as if an earlier run had made it — for the platform-builder boot cases. */
+  public void seedContainer(String name, Observed observed, String image) {
+    containers.put(name, observed);
+    containerImages.put(name, image);
+  }
+
+  @Override
   public OpResult stop(String name, Duration timeout) {
     refuseIfDown("stop " + name);
     calls.add("stop:" + name);
@@ -272,6 +318,7 @@ public class FakeContainersDriver implements ContainersDriver {
     // is what lets a test say what the registry does when docker cannot perform one.
     if (nextOp.ok()) {
       containers.remove(name);
+      containerImages.remove(name);
     }
     return nextOp;
   }

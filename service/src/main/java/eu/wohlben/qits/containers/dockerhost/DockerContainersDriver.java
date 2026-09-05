@@ -118,6 +118,44 @@ public class DockerContainersDriver implements ContainersDriver {
     return new Started(true, lastLine(result.output()), null);
   }
 
+  @Override
+  public Started runBuildkitd(
+      String image,
+      String network,
+      String stateVolume,
+      String toml,
+      long pidsLimit,
+      int oomScoreAdj,
+      Duration timeout) {
+    ContainerProcess.Result result =
+        ContainerProcess.run(
+            null,
+            DockerArgv.runBuildkitd(runtime, image, network, stateVolume, toml, pidsLimit, oomScoreAdj),
+            timeout,
+            ContainersTimeouts.RUN_MAX_CHARS);
+    if (!succeeded(result)) {
+      LOG.warnf("docker refused to run the platform builder: %s", brief(result.output()));
+      return new Started(false, "", result.output());
+    }
+    return new Started(true, lastLine(result.output()), null);
+  }
+
+  /** The image reference behind a name — same absence/no-answer split as {@link #inspect}. */
+  @Override
+  public Optional<String> imageOf(String name, Duration timeout) {
+    ContainerProcess.Result result =
+        ContainerProcess.run(
+            null, DockerArgv.inspectImage(runtime, name), timeout, ContainersTimeouts.SHORT_MAX_CHARS);
+    if (succeeded(result)) {
+      return Optional.of(result.output() == null ? "" : result.output().strip());
+    }
+    if (result.exitCode() != NO_ANSWER && absent(result.output())) {
+      return Optional.empty();
+    }
+    throw new IllegalStateException(
+        "docker did not answer an image inspect of " + name + ": " + brief(result.output()));
+  }
+
   /**
    * One {@code docker inspect}, in one call: the id, the {@code <status>/<health>} pair and when
    * this run began. See the class javadoc for why an unrecognised refusal throws rather than

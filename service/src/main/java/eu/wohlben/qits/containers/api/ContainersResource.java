@@ -13,6 +13,7 @@ import eu.wohlben.qits.containers.api.ContainersWire.Recreate;
 import eu.wohlben.qits.containers.api.ContainersWire.StateDto;
 import eu.wohlben.qits.containers.control.ContainerRegistry;
 import eu.wohlben.qits.containers.control.ContainersDriver;
+import eu.wohlben.qits.containers.dockerhost.PlatformBuildkit;
 import eu.wohlben.qits.containers.entity.DesiredState;
 import eu.wohlben.qits.containers.entity.ObservedState;
 import eu.wohlben.qits.containers.spec.ContainerSpec;
@@ -83,6 +84,8 @@ public class ContainersResource {
 
   @Inject ContainerRegistry registry;
 
+  @Inject PlatformBuildkit buildkit;
+
   // --- the one write that starts something -------------------------------------------------------
 
   /**
@@ -112,7 +115,10 @@ public class ContainersResource {
     if (request == null) {
       throw new IllegalArgumentException("Invalid request: no body");
     }
-    ContainerSpec spec = ContainersWire.toSpec(request.spec());
+    // A workload that declared the socket is a workload that builds, so the platform builder's
+    // address rides in beside it — unless the caller sent the key, whose value (empty included)
+    // wins. The rule and its reasons are PlatformBuildkit's.
+    ContainerSpec spec = buildkit.handOut(ContainersWire.toSpec(request.spec()));
     LifecyclePolicy policy = ContainersWire.toPolicy(request.policy());
 
     ContainerRegistry.Ensured ensured =

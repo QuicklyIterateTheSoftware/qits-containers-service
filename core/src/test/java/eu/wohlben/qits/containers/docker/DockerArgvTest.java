@@ -512,6 +512,85 @@ public class DockerArgvTest {
   }
 
   @Test
+  public void rendersTheWholePlatformBuilderArgv() {
+    // The one privileged run this service makes, asserted whole for the same reason the step argv
+    // is: --privileged appearing anywhere else, or a caller-shaped word appearing here, is the
+    // regression.
+    List<String> argv =
+        DockerArgv.runBuildkitd(
+            "docker", "moby/buildkit:v0.33.0", "qits-net", "qits-buildkitd-state",
+            "[worker.oci]\n  gc = true\n", 4096, 500);
+
+    assertEquals(
+        List.of(
+            "docker",
+            "run",
+            "-d",
+            "--name",
+            "qits-buildkitd",
+            "--network",
+            "qits-net",
+            "--network-alias",
+            "qits-buildkitd",
+            "--privileged",
+            "--restart",
+            "unless-stopped",
+            "--pids-limit",
+            "4096",
+            "--oom-score-adj",
+            "500",
+            "-v",
+            "qits-buildkitd-state:/var/lib/buildkit",
+            "-e",
+            "BUILDKITD_TOML=[worker.oci]\n  gc = true\n",
+            "--entrypoint",
+            "/bin/sh",
+            "moby/buildkit:v0.33.0",
+            "-c",
+            DockerArgv.BUILDKITD_BOOTSTRAP),
+        argv);
+  }
+
+  @Test
+  public void thePlatformBuilderBootstrapInterpolatesNothing() {
+    // The toml travels as an environment value the shell reads; a word of it in the -c text would
+    // be the interpolation the whole BOOTSTRAP idiom exists to rule out. What the text may hold is
+    // the variable's NAME, exactly once, quoted — the printf that copies it into the file.
+    assertEquals(1, DockerArgv.BUILDKITD_BOOTSTRAP.split("BUILDKITD_TOML", -1).length - 1);
+    assertTrue(DockerArgv.BUILDKITD_BOOTSTRAP.contains("\"$BUILDKITD_TOML\""));
+  }
+
+  @Test
+  public void privilegedAppearsInThePlatformBuilderArgvAndNowhereElse() {
+    List<String> step =
+        DockerArgv.run(
+            "docker",
+            "qits-ct-x",
+            ciStep().build(),
+            Map.of(),
+            LifecyclePolicy.ephemeral(Duration.ofHours(1)),
+            null);
+    assertFalse(step.contains("--privileged"), "no spec can express the builder's privilege");
+  }
+
+  @Test
+  public void theImageInspectAsksForTheReferenceNotTheId() {
+    assertEquals(
+        List.of("docker", "inspect", "--format", "{{.Config.Image}}", "qits-buildkitd"),
+        DockerArgv.inspectImage("docker", "qits-buildkitd"));
+  }
+
+  @Test
+  public void thePlatformBuilderIsAnAllowedExecTargetAndStrangersAreNot() {
+    // The exec belt stays closed: the buildx prefix, the one platform constant, nothing else.
+    assertEquals(
+        "qits-buildkitd", ContainersIdentifiers.requireBuilderContainer("qits-buildkitd"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ContainersIdentifiers.requireBuilderContainer("qits-buildkitd-2"));
+  }
+
+  @Test
   public void aMountPathMayNotForgeAMountsOwnFields() {
     // `-v <volume>:<path>` is one argv element; a colon in either half would move the boundary and
     // could append a third field docker reads as a mode.

@@ -252,11 +252,16 @@ class GcApiTest {
         .body("host.reclaimedBytes", is(103_500_000_000L))
         .body("host.detail", is("Total: 103.5GB"))
         .body("host.error", nullValue())
-        .body("builders", hasSize(1))
-        .body("builders[0].container", is("buildx_buildkit_qits-bootstrap-builder-v40"))
-        .body("builders[0].reclaimedBytes", is(27_110_000_000L))
-        .body("builders[0].detail", notNullValue())
-        .body("builders[0].error", nullValue());
+        // The platform's own buildkitd rides first in every sweep, at the host's keep-storage;
+        // the buildx builders follow.
+        .body("builders", hasSize(2))
+        .body(
+            "builders[0].container",
+            is(eu.wohlben.qits.containers.spec.ContainersIdentifiers.PLATFORM_BUILDER))
+        .body("builders[1].container", is("buildx_buildkit_qits-bootstrap-builder-v40"))
+        .body("builders[1].reclaimedBytes", is(27_110_000_000L))
+        .body("builders[1].detail", notNullValue())
+        .body("builders[1].error", nullValue());
   }
 
   @Test
@@ -273,8 +278,8 @@ class GcApiTest {
         .post(BUILD_CACHE)
         .then()
         .statusCode(200)
-        .body("builders[0].error", notNullValue())
-        .body("builders[0].reclaimedBytes", is(0));
+        .body("builders[1].error", notNullValue())
+        .body("builders[1].reclaimedBytes", is(0));
   }
 
   @Test
@@ -314,6 +319,9 @@ class GcApiTest {
     org.junit.jupiter.api.Assertions.assertEquals(
         List.of(
             "pruneBuildCache:20000000000",
+            "pruneBuilderCache:"
+                + eu.wohlben.qits.containers.spec.ContainersIdentifiers.PLATFORM_BUILDER
+                + ":20000000000",
             "listBuildxBuilders",
             "pruneBuilderCache:buildx_buildkit_qits-bootstrap-builder-v40:1000000000"),
         driver.calls());

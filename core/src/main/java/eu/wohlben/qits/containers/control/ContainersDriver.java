@@ -81,6 +81,25 @@ public interface ContainersDriver {
   /** One inspect. Empty when docker has no such container — see {@link Observed}. */
   Optional<Observed> inspect(String name, Duration timeout);
 
+  /**
+   * Which image reference the named container was created from. Empty when docker has no such
+   * container, and it <b>throws</b> when docker did not answer, on {@link #inspect}'s reasoning:
+   * the one caller compares it against a configured pin to decide whether to replace the platform's
+   * builder, and a guess read as "some other image" would recreate a healthy container.
+   */
+  Optional<String> imageOf(String name, Duration timeout);
+
+  /**
+   * Start the platform's own buildkitd — the one privileged container this service ever runs, and
+   * the only run that goes around {@link ContainerSpec}. It does so <b>because</b> of what it needs:
+   * {@code --privileged} must stay something no spec can express, so the whole argv is a constant
+   * shape in {@code DockerArgv} and this method carries only the values this service's own
+   * configuration decides. See {@code DockerArgv.runBuildkitd}.
+   */
+  Started runBuildkitd(
+      String image, String network, String stateVolume, String toml, long pidsLimit,
+      int oomScoreAdj, Duration timeout);
+
   /** Stop it, leaving it restartable. */
   OpResult stop(String name, Duration timeout);
 

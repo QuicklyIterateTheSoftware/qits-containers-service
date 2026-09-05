@@ -42,6 +42,16 @@ Two things are deliberately outside it:
 - **Anything a container talks to.** Containers dial out to stable DNS aliases and re-dial on their
   own, which is what makes a restart of this service invisible to traffic that is already flowing.
 
+**One container is the exception, argued the way the shared volumes are: the platform builder.**
+`PlatformBuildkit` ensures a buildkitd container (`qits-buildkitd`, pinned
+`qits.containers.buildkit.image`, state volume `qits-buildkitd-state`) at boot — warned about,
+never failed on, claimed by no row — and hands its address to every workload that declared the
+docker socket as `BUILDKIT_HOST`, unless the caller sent the key itself (an empty caller value is
+qits-ci's kill switch and wins). It is not a workload this service decided to run for somebody; it
+is infrastructure of the build plane, exactly as the shared maven volume is infrastructure of the
+builds — and it exists so that "builds an image" stops implying "holds the host's docker socket".
+The wrapper's `qits-buildkit-plan.md` carries the whole migration.
+
 ## The registry, and what a restart does
 
 `core/control` is the state machine, and it is proved end to end against a scripted driver rather

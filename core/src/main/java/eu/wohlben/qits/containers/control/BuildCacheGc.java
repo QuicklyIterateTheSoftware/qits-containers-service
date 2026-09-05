@@ -1,10 +1,12 @@
 package eu.wohlben.qits.containers.control;
 
 import eu.wohlben.qits.containers.control.ContainersDriver.CacheResult;
+import eu.wohlben.qits.containers.spec.ContainersIdentifiers;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 /**
@@ -60,6 +62,15 @@ public class BuildCacheGc {
   @Inject ContainersDriver driver;
 
   /**
+   * Whether the platform's own buildkitd is part of the build plane — and so of this sweep. Its
+   * cache gets the HOST's keep-storage number, not the builder one: since the migration off the
+   * host docker it <em>is</em> the platform's build cache, and the small bootstrap-builder budget
+   * would empty the cache every committed Dockerfile warms.
+   */
+  @ConfigProperty(name = "qits.containers.buildkit.enabled")
+  boolean platformBuilderEnabled;
+
+  /**
    * One pass.
    *
    * @param dryRun read every cache, prune none
@@ -70,6 +81,13 @@ public class BuildCacheGc {
   public Result sweep(boolean dryRun, long keepStorageBytes, long builderKeepStorageBytes) {
     Cache host = hostCache(dryRun, keepStorageBytes);
     List<Builder> builders = new ArrayList<>();
+    if (platformBuilderEnabled) {
+      // The platform builder is not in the buildx listing — it is this service's own, named by a
+      // constant rather than a prefix — and its failure stays its own row like any builder's, so a
+      // host with the builder down can still prune the stores that answer.
+      builders.add(
+          builderCache(ContainersIdentifiers.PLATFORM_BUILDER, dryRun, keepStorageBytes));
+    }
     for (String container : driver.listBuildxBuilders(ContainersTimeouts.GC_LIST)) {
       builders.add(builderCache(container, dryRun, builderKeepStorageBytes));
     }

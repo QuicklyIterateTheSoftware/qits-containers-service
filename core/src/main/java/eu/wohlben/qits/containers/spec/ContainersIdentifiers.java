@@ -94,6 +94,16 @@ public final class ContainersIdentifiers {
   public static final String BUILDER_PREFIX = "buildx_buildkit_";
 
   /**
+   * The platform's own buildkitd container — the one builder this service creates and owns, and the
+   * address every build on the platform dials ({@code tcp://qits-buildkitd:1234} on the platform
+   * network). A constant rather than configuration, for the same reason {@link #BUILDER_PREFIX} is:
+   * the name is half of a cross-repo contract (the other half is the {@code BUILDKIT_HOST} every
+   * step container is handed), and it guards a {@code docker exec} — a closed set of exec targets
+   * has to be spelled where no configuration can widen it.
+   */
+  public static final String PLATFORM_BUILDER = "qits-buildkitd";
+
+  /**
    * An image id, as {@code docker image ls --no-trunc} prints one: {@code sha256:} and 64 hex, or a
    * bare hex prefix of one. <b>It is not {@link #requireImage}</b>, deliberately — a reference may
    * carry a host, a port and a path, and the garbage collection only ever removes an image by the
@@ -319,7 +329,9 @@ public final class ContainersIdentifiers {
    * is evidence about a host and not about what may be run inside one.
    */
   public static String requireBuilderContainer(String name) {
-    if (name == null || name.length() > NAME_MAX || !name.matches(BUILDER_CONTAINER)) {
+    if (name == null
+        || name.length() > NAME_MAX
+        || !(name.matches(BUILDER_CONTAINER) || PLATFORM_BUILDER.equals(name))) {
       throw refuse("builder container", name);
     }
     return name;

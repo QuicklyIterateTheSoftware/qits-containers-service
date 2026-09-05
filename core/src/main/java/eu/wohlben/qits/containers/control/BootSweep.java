@@ -84,6 +84,13 @@ public class BootSweep {
    */
   public static final int SHARED_RESOURCES_PRIORITY = 2400;
 
+  /**
+   * Between the shared resources and the sweep: the platform builder needs the network answer the
+   * shared-resources pass just warned about, and nothing about the sweep or the observer should
+   * wait on an image pull.
+   */
+  public static final int PLATFORM_BUILDER_PRIORITY = 2450;
+
   public static final int STARTUP_PRIORITY = 2500;
 
   public static final int OBSERVER_PRIORITY = 2600;

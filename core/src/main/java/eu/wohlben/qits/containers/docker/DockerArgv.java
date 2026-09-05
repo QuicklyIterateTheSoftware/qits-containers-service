@@ -224,6 +224,98 @@ public final class DockerArgv {
     return List.copyOf(argv);
   }
 
+  /**
+   * How the platform's own buildkitd writes its configuration and comes up. The file arrives as an
+   * environment value and becomes {@code /etc/buildkit/buildkitd.toml} inside the container —
+   * qits-ci's {@code BOOTSTRAP} shape, and for the same reason: this service shares no volume with
+   * the container and the wire between them is an argv, so a small file can only be a value the
+   * container writes for itself. Zero interpolation: the value is a variable the shell reads, never
+   * a word in this string.
+   *
+   * <p>{@code --addr tcp://0.0.0.0:1234} binds the network the container is on — the platform
+   * network, where every step container dials {@code tcp://%s:1234} — and 1234 is buildkitd's own
+   * conventional port, spelled once here and once in the injected address default.
+   */
+  static final String BUILDKITD_BOOTSTRAP =
+      """
+      set -e
+      mkdir -p /etc/buildkit
+      printf '%s' "$BUILDKITD_TOML" > /etc/buildkit/buildkitd.toml
+      exec buildkitd --addr tcp://0.0.0.0:1234
+      """;
+
+  /** Where buildkitd keeps its content store — what the state volume is mounted over. */
+  public static final String BUILDKITD_STATE_PATH = "/var/lib/buildkit";
+
+  /**
+   * The one privileged {@code docker run} this service makes, and the reason it is its own argv
+   * rather than a {@link ContainerSpec}: {@code --privileged} must never be something a spec can
+   * express — a caller-assembled privilege is exactly what {@link ContainerSpec}'s shape exists to
+   * prevent — and buildkitd cannot mount overlayfs for its build sandboxes without it. The whole
+   * argv is this method's, with nothing caller-shaped in it: the name is the
+   * {@link ContainersIdentifiers#PLATFORM_BUILDER} constant, the image and the toml come from this
+   * service's own configuration, and both bounds are rendered unconditionally.
+   *
+   * <p>{@code --restart unless-stopped} because the builder outlives this service and a dockerd
+   * restart — the {@code EXPLICIT} lifecycle's rendering, without the row (the builder is platform
+   * infrastructure in {@code SharedResources}' sense: ensured at boot, claimed by nobody).
+   * {@code --oom-score-adj} positive for the same reason a step container's is: under memory
+   * pressure the kernel should take the build plane before a platform service.
+   */
+  public static List<String> runBuildkitd(
+      String runtimeBinary,
+      String image,
+      String network,
+      String stateVolume,
+      String toml,
+      long pidsLimit,
+      int oomScoreAdj) {
+    ContainersIdentifiers.requireImage(image);
+    ContainersIdentifiers.requireNetwork(network);
+    ContainersIdentifiers.requireVolumeName(stateVolume);
+    return List.of(
+        runtimeBinary,
+        "run",
+        "-d",
+        "--name",
+        ContainersIdentifiers.PLATFORM_BUILDER,
+        "--network",
+        network,
+        "--network-alias",
+        ContainersIdentifiers.PLATFORM_BUILDER,
+        "--privileged",
+        "--restart",
+        "unless-stopped",
+        "--pids-limit",
+        String.valueOf(pidsLimit),
+        "--oom-score-adj",
+        String.valueOf(oomScoreAdj),
+        "-v",
+        stateVolume + ":" + BUILDKITD_STATE_PATH,
+        "-e",
+        "BUILDKITD_TOML=" + (toml == null ? "" : toml),
+        "--entrypoint",
+        "/bin/sh",
+        image,
+        "-c",
+        BUILDKITD_BOOTSTRAP);
+  }
+
+  /**
+   * Which image reference a container was created from — {@code {{.Config.Image}}}, the reference
+   * as it was asked for rather than the resolved id, which is what a pin comparison wants: the boot
+   * pass asks "is the running builder the configured reference" and recreates it when the pin
+   * moved.
+   */
+  public static List<String> inspectImage(String runtimeBinary, String name) {
+    return List.of(
+        runtimeBinary,
+        "inspect",
+        "--format",
+        "{{.Config.Image}}",
+        ContainersIdentifiers.requireContainerName(name));
+  }
+
   /** One observation of the container's state — see {@link #STATE_FORMAT}. */
   public static List<String> inspectState(String runtimeBinary, String name) {
     return List.of(

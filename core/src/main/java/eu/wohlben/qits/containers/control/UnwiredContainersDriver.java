@@ -53,6 +53,23 @@ public class UnwiredContainersDriver implements ContainersDriver {
   }
 
   @Override
+  public Optional<String> imageOf(String name, Duration timeout) {
+    throw refuse("inspect the image of " + name);
+  }
+
+  @Override
+  public Started runBuildkitd(
+      String image,
+      String network,
+      String stateVolume,
+      String toml,
+      long pidsLimit,
+      int oomScoreAdj,
+      Duration timeout) {
+    throw refuse("run the platform builder");
+  }
+
+  @Override
   public OpResult start(String name, Duration timeout) {
     throw refuse("start " + name);
   }
