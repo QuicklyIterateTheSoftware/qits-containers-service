@@ -63,8 +63,8 @@ public class FakeContainersDriver implements ContainersDriver {
 
   private final Map<String, Observed> containers = new ConcurrentHashMap<>();
 
-  /** What each container was created from — what {@code imageOf} answers. */
-  private final Map<String, String> containerImages = new ConcurrentHashMap<>();
+  /** Each container's builder config stamp — what {@code buildkitdStamp} answers. */
+  private final Map<String, String> containerStamps = new ConcurrentHashMap<>();
   private final Map<String, String> logs = new ConcurrentHashMap<>();
   private final Map<String, List<String>> labelListings = new ConcurrentHashMap<>();
   private final Map<String, List<String>> volumeListings = new ConcurrentHashMap<>();
@@ -254,13 +254,13 @@ public class FakeContainersDriver implements ContainersDriver {
   }
 
   @Override
-  public Optional<String> imageOf(String name, Duration timeout) {
-    refuseIfDown("inspect the image of " + name);
-    calls.add("imageOf:" + name);
+  public Optional<String> buildkitdStamp(String name, Duration timeout) {
+    refuseIfDown("inspect the stamp of " + name);
+    calls.add("buildkitdStamp:" + name);
     if (!containers.containsKey(name)) {
       return Optional.empty();
     }
-    return Optional.of(containerImages.getOrDefault(name, ""));
+    return Optional.of(containerStamps.getOrDefault(name, ""));
   }
 
   @Override
@@ -269,6 +269,7 @@ public class FakeContainersDriver implements ContainersDriver {
       String network,
       String stateVolume,
       String toml,
+      String configStamp,
       long pidsLimit,
       int oomScoreAdj,
       Duration timeout) {
@@ -285,15 +286,15 @@ public class FakeContainersDriver implements ContainersDriver {
     }
     if (nextRun.started()) {
       containers.put(name, new Observed(nextRun.containerId(), "running", "none", Instant.EPOCH));
-      containerImages.put(name, image);
+      containerStamps.put(name, configStamp == null ? "" : configStamp);
     }
     return nextRun;
   }
 
   /** Seeds a container as if an earlier run had made it — for the platform-builder boot cases. */
-  public void seedContainer(String name, Observed observed, String image) {
+  public void seedContainer(String name, Observed observed, String stamp) {
     containers.put(name, observed);
-    containerImages.put(name, image);
+    containerStamps.put(name, stamp);
   }
 
   @Override
@@ -318,7 +319,7 @@ public class FakeContainersDriver implements ContainersDriver {
     // is what lets a test say what the registry does when docker cannot perform one.
     if (nextOp.ok()) {
       containers.remove(name);
-      containerImages.remove(name);
+      containerStamps.remove(name);
     }
     return nextOp;
   }

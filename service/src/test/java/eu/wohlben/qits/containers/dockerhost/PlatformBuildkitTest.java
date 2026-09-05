@@ -41,9 +41,9 @@ public class PlatformBuildkitTest {
     buildkit.network = "qits-net";
     buildkit.registryMirrors =
         List.of(
-            "registry.dev.localhost:8080=qits-platform-artifacts:8080",
+            "registry.dev.localhost:8080=dev-qits-artifacts:8080",
             "mirror.dev.localhost:8080=qits-platform-mirror:8080");
-    buildkit.httpRegistries = List.of("qits-platform-artifacts:8080", "qits-platform-mirror:8080");
+    buildkit.httpRegistries = List.of("dev-qits-artifacts:8080", "qits-platform-mirror:8080");
     buildkit.keepStorageBytes = 20_000_000_000L;
     buildkit.pidsLimit = 4096;
     buildkit.oomScoreAdj = 500;
@@ -63,9 +63,11 @@ public class PlatformBuildkitTest {
   }
 
   @Test
-  public void aRunningBuilderOnThePinIsAdoptedUntouched() {
+  public void aRunningBuilderCarryingTheStampIsAdoptedUntouched() {
     driver.seedContainer(
-        NAME, new ContainersDriver.Observed("id-1", "running", "none", Instant.EPOCH), PIN);
+        NAME,
+        new ContainersDriver.Observed("id-1", "running", "none", Instant.EPOCH),
+        buildkit.configStamp(buildkit.buildkitdToml()));
 
     buildkit.ensureOnce();
 
@@ -75,9 +77,11 @@ public class PlatformBuildkitTest {
   }
 
   @Test
-  public void aStoppedBuilderOnThePinIsStartedNotReplaced() {
+  public void aStoppedBuilderCarryingTheStampIsStartedNotReplaced() {
     driver.seedContainer(
-        NAME, new ContainersDriver.Observed("id-1", "exited", "none", Instant.EPOCH), PIN);
+        NAME,
+        new ContainersDriver.Observed("id-1", "exited", "none", Instant.EPOCH),
+        buildkit.configStamp(buildkit.buildkitdToml()));
 
     buildkit.ensureOnce();
 
@@ -86,11 +90,12 @@ public class PlatformBuildkitTest {
   }
 
   @Test
-  public void aBuilderOnAnotherImageIsReplacedAndTheStateVolumeRidesAcross() {
+  public void aBuilderWithAnotherStampIsReplacedAndTheStateVolumeRidesAcross() {
+    // Any moved value — the pin, the toml, the bounds — and equally an UNSTAMPED container (the
+    // bootstrap's host-net builder carries no label at all): both read as "not the configured
+    // builder" and are replaced, cache volume riding across.
     driver.seedContainer(
-        NAME,
-        new ContainersDriver.Observed("id-1", "running", "none", Instant.EPOCH),
-        "moby/buildkit:v0.32.0");
+        NAME, new ContainersDriver.Observed("id-1", "running", "none", Instant.EPOCH), "");
 
     buildkit.ensureOnce();
 
@@ -98,7 +103,7 @@ public class PlatformBuildkitTest {
         List.of(
             "ensureVolume:" + PlatformBuildkit.STATE_VOLUME,
             "inspect:" + NAME,
-            "imageOf:" + NAME,
+            "buildkitdStamp:" + NAME,
             "stop:" + NAME,
             "remove:" + NAME,
             "pull:" + PIN,
@@ -107,6 +112,15 @@ public class PlatformBuildkitTest {
     // The volume was only ever ensured, never removed — the cache is the point of the replace
     // being a replace rather than a reset.
     assertFalse(driver.calls().stream().anyMatch(c -> c.startsWith("removeVolume")));
+  }
+
+  @Test
+  public void aChangedTomlAloneMovesTheStamp() {
+    // The registry rewrites are as load-bearing as the pin — the failure that taught this was a
+    // builder adopted with a toml naming an alias that resolves nowhere.
+    String before = buildkit.configStamp(buildkit.buildkitdToml());
+    buildkit.registryMirrors = List.of("registry.dev.localhost:8080=somewhere-else:8080");
+    assertFalse(before.equals(buildkit.configStamp(buildkit.buildkitdToml())));
   }
 
   @Test
@@ -162,10 +176,10 @@ public class PlatformBuildkitTest {
           gc = true
           gckeepstorage = 20000000000
         [registry."registry.dev.localhost:8080"]
-          mirrors = ["qits-platform-artifacts:8080"]
+          mirrors = ["dev-qits-artifacts:8080"]
         [registry."mirror.dev.localhost:8080"]
           mirrors = ["qits-platform-mirror:8080"]
-        [registry."qits-platform-artifacts:8080"]
+        [registry."dev-qits-artifacts:8080"]
           http = true
         [registry."qits-platform-mirror:8080"]
           http = true

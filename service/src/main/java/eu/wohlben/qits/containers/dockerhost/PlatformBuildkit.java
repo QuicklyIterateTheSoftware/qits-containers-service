@@ -33,11 +33,16 @@ import org.jboss.logging.Logger;
  * volume collection classes {@code unmanaged} and keeps, and liveness is docker's own
  * {@code --restart unless-stopped}.
  *
- * <p><b>The boot pass converges on the configured pin.</b> A running builder on the configured
- * image is adopted; a stopped one is started; one on another image — the pin was bumped — is
+ * <p><b>The boot pass converges on the configured STAMP</b> — a hash over the image pin, the
+ * rendered toml, the bounds and the network, written as a label on the container. A running builder
+ * carrying the stamp is adopted; a stopped one is started; anything else — a bumped pin, a changed
+ * registry mapping, or the bootstrap's own host-net builder, which carries no stamp at all — is
  * replaced, which is the one moment the cache volume's contents carry across (the volume is
- * mounted, never removed). Every step is warn-and-carry-on: docker not answering at boot is the
- * ordinary state of a rebooted host, and the builds will name the missing builder loudly enough.
+ * mounted, never removed). The stamp exists because the toml is exactly as load-bearing as the pin:
+ * a builder whose registry rewrites are wrong builds nothing, and comparing the image alone adopted
+ * one live (measured 2026-09-05, the first converted release run). Every step is warn-and-carry-on:
+ * docker not answering at boot is the ordinary state of a rebooted host, and the builds will name
+ * the missing builder loudly enough.
  *
  * <p><b>{@code handOut} is the address's one exit.</b> A workload that declared the docker socket
  * is a workload that builds, so it is handed {@code BUILDKIT_HOST} beside the socket — unless the
@@ -110,10 +115,12 @@ public class PlatformBuildkit {
   void ensureOnce() {
     driver.ensureVolume(new VolumeSpec(STATE_VOLUME), Map.of(), ContainersTimeouts.VOLUME);
     String name = ContainersIdentifiers.PLATFORM_BUILDER;
+    String toml = buildkitdToml();
+    String stamp = configStamp(toml);
     Optional<ContainersDriver.Observed> observed = driver.inspect(name, ContainersTimeouts.INSPECT);
     if (observed.isPresent()) {
-      String runningImage = driver.imageOf(name, ContainersTimeouts.INSPECT).orElse("");
-      if (image.equals(runningImage)) {
+      String runningStamp = driver.buildkitdStamp(name, ContainersTimeouts.INSPECT).orElse("");
+      if (stamp.equals(runningStamp)) {
         if (!"running".equals(observed.get().status())) {
           ContainersDriver.OpResult started = driver.start(name, ContainersTimeouts.START);
           if (!started.ok()) {
@@ -122,9 +129,12 @@ public class PlatformBuildkit {
         }
         return;
       }
-      // The pin moved. The container is replaced and the state volume rides across, which is what
-      // makes a version bump cost a restart rather than a cold cache.
-      LOG.infof("Replacing the platform builder: it runs %s, the pin says %s", runningImage, image);
+      // The configuration moved — a pin bump, a registry mapping, or an unstamped predecessor (the
+      // bootstrap's host-net builder). The container is replaced and the state volume rides
+      // across, which is what makes any of those cost a restart rather than a cold cache.
+      LOG.infof(
+          "Replacing the platform builder: its stamp is '%s', the configuration says %s",
+          runningStamp, stamp);
       driver.stop(name, ContainersTimeouts.STOP);
       driver.remove(name, ContainersTimeouts.REMOVE);
     }
@@ -136,12 +146,31 @@ public class PlatformBuildkit {
     }
     ContainersDriver.Started started =
         driver.runBuildkitd(
-            image, network, STATE_VOLUME, buildkitdToml(), pidsLimit, oomScoreAdj,
+            image, network, STATE_VOLUME, toml, stamp, pidsLimit, oomScoreAdj,
             ContainersTimeouts.RUN);
     if (!started.started()) {
       LOG.warnf("Could not run the platform builder: %s", started.detail());
     } else {
-      LOG.infof("The platform builder %s is up on %s", name, image);
+      LOG.infof("The platform builder %s is up on %s (stamp %s)", name, image, stamp);
+    }
+  }
+
+  /**
+   * The stamp: sha256 over everything the container is started with that this configuration
+   * decides. The toml is in it because the registry rewrites are as load-bearing as the pin; the
+   * bounds and the network are in it because a changed value that did not replace the container
+   * would be configuration nothing applies.
+   */
+  String configStamp(String toml) {
+    String material =
+        image + "\n" + network + "\n" + toml + "\n" + pidsLimit + "\n" + oomScoreAdj;
+    try {
+      byte[] digest =
+          java.security.MessageDigest.getInstance("SHA-256")
+              .digest(material.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      return java.util.HexFormat.of().formatHex(digest);
+    } catch (java.security.NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 is missing from this JVM", e);
     }
   }
 
