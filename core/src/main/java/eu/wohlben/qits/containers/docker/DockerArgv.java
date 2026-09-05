@@ -232,16 +232,21 @@ public final class DockerArgv {
    * container writes for itself. Zero interpolation: the value is a variable the shell reads, never
    * a word in this string.
    *
-   * <p>{@code --addr tcp://0.0.0.0:1234} binds the network the container is on — the platform
-   * network, where every step container dials {@code tcp://%s:1234} — and 1234 is buildkitd's own
-   * conventional port, spelled once here and once in the injected address default.
+   * <p>Two listen addresses, each with its own reader. {@code tcp://0.0.0.0:1234} binds the
+   * network the container is on — the platform network, where every step container dials the
+   * {@code qits-buildkitd} alias; 1234 is buildkitd's own conventional port, spelled once here and
+   * once in the injected address default. {@code unix:///run/buildkit/buildkitd.sock} is
+   * buildkitd's DEFAULT socket, and it is what the build-cache sweep's {@code docker exec buildctl
+   * prune}/{@code du} finds — an exec'd buildctl knows no tcp address, and without the socket the
+   * sweep answered {@code dial unix …: no such file or directory} on the live platform (measured
+   * 2026-09-05, the first gc dry-run against the owned builder).
    */
-  static final String BUILDKITD_BOOTSTRAP =
+  public static final String BUILDKITD_BOOTSTRAP =
       """
       set -e
       mkdir -p /etc/buildkit
       printf '%s' "$BUILDKITD_TOML" > /etc/buildkit/buildkitd.toml
-      exec buildkitd --addr tcp://0.0.0.0:1234
+      exec buildkitd --addr unix:///run/buildkit/buildkitd.sock --addr tcp://0.0.0.0:1234
       """;
 
   /** Where buildkitd keeps its content store — what the state volume is mounted over. */
