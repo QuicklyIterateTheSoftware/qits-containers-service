@@ -205,6 +205,13 @@ public class TokenValidationBootstrapIT {
       // transitions are the one part of this service no story here reaches.
       overrides.put("qits.containers.observe-interval-seconds", "0");
 
+      // NO PLATFORM BUILDER either, on the ticker's own reasoning turned around: this pass is a
+      // boot step, so its calls would not float mid-story — they would land in HostBootstrapIT's
+      // edge counts, making the boot story about a builder whose whole behaviour (converge on the
+      // pin) already has its own unit proof in PlatformBuildkitTest. Off is a shipped
+      // configuration; what the catalogue does not reach is stated where the ticker's gap is.
+      overrides.put("qits.containers.buildkit.enabled", "false");
+
       // --- the two dials a host-run process has no deployment behind ----------------------------
       // Dark outside a deployment, like %dev/%test — both runtime keys, and both needed here because
       // a LAUNCHED ARTIFACT RUNS UNDER NEITHER PROFILE: the %test lines in application.properties
