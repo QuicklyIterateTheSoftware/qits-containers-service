@@ -519,7 +519,7 @@ public class DockerArgvTest {
     List<String> argv =
         DockerArgv.runBuildkitd(
             "docker", "moby/buildkit:v0.33.0", "qits-net", "qits-buildkitd-state",
-            "[worker.oci]\n  gc = true\n", 4096, 500);
+            "[worker.oci]\n  gc = true\n", "cafe01", 4096, 500);
 
     assertEquals(
         List.of(
@@ -532,6 +532,8 @@ public class DockerArgvTest {
             "qits-net",
             "--network-alias",
             "qits-buildkitd",
+            "--label",
+            DockerArgv.BUILDKITD_STAMP_LABEL + "=cafe01",
             "--privileged",
             "--restart",
             "unless-stopped",
@@ -574,10 +576,15 @@ public class DockerArgvTest {
   }
 
   @Test
-  public void theImageInspectAsksForTheReferenceNotTheId() {
+  public void theStampInspectReadsTheConfigLabel() {
     assertEquals(
-        List.of("docker", "inspect", "--format", "{{.Config.Image}}", "qits-buildkitd"),
-        DockerArgv.inspectImage("docker", "qits-buildkitd"));
+        List.of(
+            "docker",
+            "inspect",
+            "--format",
+            "{{index .Config.Labels \"" + DockerArgv.BUILDKITD_STAMP_LABEL + "\"}}",
+            "qits-buildkitd"),
+        DockerArgv.inspectBuildkitdStamp("docker", "qits-buildkitd"));
   }
 
   @Test

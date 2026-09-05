@@ -53,8 +53,8 @@ public class UnwiredContainersDriver implements ContainersDriver {
   }
 
   @Override
-  public Optional<String> imageOf(String name, Duration timeout) {
-    throw refuse("inspect the image of " + name);
+  public Optional<String> buildkitdStamp(String name, Duration timeout) {
+    throw refuse("inspect the stamp of " + name);
   }
 
   @Override
@@ -63,6 +63,7 @@ public class UnwiredContainersDriver implements ContainersDriver {
       String network,
       String stateVolume,
       String toml,
+      String configStamp,
       long pidsLimit,
       int oomScoreAdj,
       Duration timeout) {

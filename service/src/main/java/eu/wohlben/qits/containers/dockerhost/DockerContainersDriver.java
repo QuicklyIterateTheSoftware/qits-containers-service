@@ -124,13 +124,15 @@ public class DockerContainersDriver implements ContainersDriver {
       String network,
       String stateVolume,
       String toml,
+      String configStamp,
       long pidsLimit,
       int oomScoreAdj,
       Duration timeout) {
     ContainerProcess.Result result =
         ContainerProcess.run(
             null,
-            DockerArgv.runBuildkitd(runtime, image, network, stateVolume, toml, pidsLimit, oomScoreAdj),
+            DockerArgv.runBuildkitd(
+                runtime, image, network, stateVolume, toml, configStamp, pidsLimit, oomScoreAdj),
             timeout,
             ContainersTimeouts.RUN_MAX_CHARS);
     if (!succeeded(result)) {
@@ -140,20 +142,24 @@ public class DockerContainersDriver implements ContainersDriver {
     return new Started(true, lastLine(result.output()), null);
   }
 
-  /** The image reference behind a name — same absence/no-answer split as {@link #inspect}. */
+  /** The builder's config stamp behind a name — same absence/no-answer split as {@link #inspect}. */
   @Override
-  public Optional<String> imageOf(String name, Duration timeout) {
+  public Optional<String> buildkitdStamp(String name, Duration timeout) {
     ContainerProcess.Result result =
         ContainerProcess.run(
-            null, DockerArgv.inspectImage(runtime, name), timeout, ContainersTimeouts.SHORT_MAX_CHARS);
+            null,
+            DockerArgv.inspectBuildkitdStamp(runtime, name),
+            timeout,
+            ContainersTimeouts.SHORT_MAX_CHARS);
     if (succeeded(result)) {
-      return Optional.of(result.output() == null ? "" : result.output().strip());
+      // `<no value>` is Go's spelling of an absent label — an unstamped container, not a stamp.
+      return Optional.of(present(result.output() == null ? "" : result.output().strip()));
     }
     if (result.exitCode() != NO_ANSWER && absent(result.output())) {
       return Optional.empty();
     }
     throw new IllegalStateException(
-        "docker did not answer an image inspect of " + name + ": " + brief(result.output()));
+        "docker did not answer a stamp inspect of " + name + ": " + brief(result.output()));
   }
 
   /**

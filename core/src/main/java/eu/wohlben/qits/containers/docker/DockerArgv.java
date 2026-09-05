@@ -248,6 +248,16 @@ public final class DockerArgv {
   public static final String BUILDKITD_STATE_PATH = "/var/lib/buildkit";
 
   /**
+   * The label the platform builder's whole configuration is stamped into, as a hash. The boot pass
+   * compares it to decide whether the running container IS the configured one — the image pin, the
+   * rendered toml, the bounds and the network all live in the stamp, so changing any of them
+   * replaces the container (the state volume rides across). A builder with no stamp — the
+   * bootstrap's host-net one, or anything hand-made — reads as "not the configured one" and is
+   * replaced too, which is exactly the cutover the bootstrap hands over with.
+   */
+  public static final String BUILDKITD_STAMP_LABEL = "qits.containers.buildkit.config";
+
+  /**
    * The one privileged {@code docker run} this service makes, and the reason it is its own argv
    * rather than a {@link ContainerSpec}: {@code --privileged} must never be something a spec can
    * express — a caller-assembled privilege is exactly what {@link ContainerSpec}'s shape exists to
@@ -268,6 +278,7 @@ public final class DockerArgv {
       String network,
       String stateVolume,
       String toml,
+      String configStamp,
       long pidsLimit,
       int oomScoreAdj) {
     ContainersIdentifiers.requireImage(image);
@@ -283,6 +294,8 @@ public final class DockerArgv {
         network,
         "--network-alias",
         ContainersIdentifiers.PLATFORM_BUILDER,
+        "--label",
+        BUILDKITD_STAMP_LABEL + "=" + (configStamp == null ? "" : configStamp),
         "--privileged",
         "--restart",
         "unless-stopped",
@@ -302,17 +315,17 @@ public final class DockerArgv {
   }
 
   /**
-   * Which image reference a container was created from — {@code {{.Config.Image}}}, the reference
-   * as it was asked for rather than the resolved id, which is what a pin comparison wants: the boot
-   * pass asks "is the running builder the configured reference" and recreates it when the pin
-   * moved.
+   * The configuration stamp a container was started with — {@value #BUILDKITD_STAMP_LABEL}. The
+   * boot pass asks "is the running builder the CONFIGURED builder", and the stamp is the whole
+   * answer: image, toml, bounds and network in one hash, so any moved value replaces the container
+   * rather than adopting one that no longer matches what a deployment says.
    */
-  public static List<String> inspectImage(String runtimeBinary, String name) {
+  public static List<String> inspectBuildkitdStamp(String runtimeBinary, String name) {
     return List.of(
         runtimeBinary,
         "inspect",
         "--format",
-        "{{.Config.Image}}",
+        "{{index .Config.Labels \"" + BUILDKITD_STAMP_LABEL + "\"}}",
         ContainersIdentifiers.requireContainerName(name));
   }
 
