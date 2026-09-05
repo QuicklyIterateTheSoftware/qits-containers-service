@@ -3,6 +3,7 @@ package eu.wohlben.qits.containers.dockerhost;
 import eu.wohlben.qits.containers.control.BootSweep;
 import eu.wohlben.qits.containers.control.ContainersDriver;
 import eu.wohlben.qits.containers.control.ContainersTimeouts;
+import eu.wohlben.qits.containers.docker.DockerArgv;
 import eu.wohlben.qits.containers.spec.ContainerSpec;
 import eu.wohlben.qits.containers.spec.ContainersIdentifiers;
 import eu.wohlben.qits.containers.spec.VolumeSpec;
@@ -169,8 +170,21 @@ public class PlatformBuildkit {
    * would be configuration nothing applies.
    */
   String configStamp(String toml) {
+    // The boot prelude is stamp material too: the listen addresses and the toml delivery live in
+    // it, and a prelude change that did not replace the container would be configuration nothing
+    // applies — the gc sweep's unix-socket fix was exactly that shape.
     String material =
-        image + "\n" + network + "\n" + toml + "\n" + pidsLimit + "\n" + oomScoreAdj;
+        image
+            + "\n"
+            + network
+            + "\n"
+            + toml
+            + "\n"
+            + pidsLimit
+            + "\n"
+            + oomScoreAdj
+            + "\n"
+            + DockerArgv.BUILDKITD_BOOTSTRAP;
     try {
       byte[] digest =
           java.security.MessageDigest.getInstance("SHA-256")
