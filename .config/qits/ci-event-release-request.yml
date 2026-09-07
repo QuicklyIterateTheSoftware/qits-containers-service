@@ -15,11 +15,11 @@
 # request cannot alter the CI that gates it by folding in a commit that edits this file.
 #
 # THE THREE STEPS ARE THE OLD TWO FILES' THREE. `ci-event-build.yml` already had two — the reactor's
-# `mvn verify`, then the image — and both are gating, in that order, because a red suite must not
-# cost the time of an image build. `ci-event-userflows.yml`'s single step follows them carrying
-# `gating: false`, which is the whole of what that separate file was: it still fails the run and
-# still shows red, and it does not hold the fold for qits-projects' build gate. Keep it LAST —
-# everything after a failing step is SKIPPED.
+# `mvn verify`, then the image — in that order, because a red suite must not cost the time of an
+# image build. `ci-event-userflows.yml`'s single step follows them; that separate file's whole
+# content is now that step. EVERY STEP GATES: it used to carry `gating: false`, which erased the
+# gating half's passing verdict instead of preserving it and stalled the fold rather than failing
+# it. Keep it LAST — everything after a failing step is SKIPPED.
 #
 # THE SHA IMAGE IS GONE. The image step ended in `docker push
 # $QITS_REGISTRY/$QITS_IMAGE_REPOSITORY/qits-containers:$QITS_CI_SHA`, the per-push coordinate cd
@@ -111,8 +111,8 @@ steps:
         --secret id=qits-client-id,src=/tmp/qits-client-id \
         --secret id=qits-client-secret,src=/tmp/qits-client-secret
 
-  # --- the NON-GATING half: verify the stories, and publish what the run observed -----------------
-  # ci-event-userflows.yml's step, unchanged but for `gating: false`.
+  # --- the stories half: verify the stories, and publish what the run observed --------------------
+  # ci-event-userflows.yml's step: that separate file's whole content is now this step.
   #
   # `mvn verify` at the fold — which regenerates service/target/userstories/ through the six story
   # ITs — and the reports published as one docs bundle, site @userflows/qits-containers, version =
@@ -162,7 +162,6 @@ steps:
   # repository's clone-alone rule held in the one place it is hardest to hold.
   - image: qits/build-images/maven-base:latest
     user: build
-    gating: false
     timeout-seconds: 2400
     script: |
       set -eu
