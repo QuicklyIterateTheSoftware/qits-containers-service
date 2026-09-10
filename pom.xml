@@ -61,8 +61,8 @@
              postgresql datasource is missing a line of that block. They move together: the rule
              names the driver as a string, so a driver that moved without the rule would pass a
              build it should fail. -->
-        <qits.db-core.version>2026.905.91442</qits.db-core.version>
-        <qits.arch-rules.version>2026.905.91442</qits.arch-rules.version>
+        <qits.db-core.version>2026.906.171046</qits.db-core.version>
+        <qits.arch-rules.version>2026.906.171046</qits.arch-rules.version>
 
         <!-- Machine identity, released out of the same libs/qits-integrations-quarkus train. It is
              the fourth platform jar this repo takes and the one AGENTS.md's "nothing else may
@@ -72,14 +72,14 @@
              answer invented here would be the interim static token the platform has a standing
              decision against. It brings no server and no transport: quarkus-oidc validates the
              bearer and this jar only reads the identity that validation leaves behind. -->
-        <qits.auth-core.version>2026.905.91442</qits.auth-core.version>
+        <qits.auth-core.version>2026.906.171046</qits.auth-core.version>
 
         <!-- The platform event bus client. It is here from the scaffold rather than from the first
              event, because it brings the causation persistence trio (CausedRow, CausationStamp,
              @Uncaused) that every row this service writes has to decide about — see ArchRulesTest —
              and its own datasource, persistence unit and Flyway lineage. Adding it later would be a
              flag day: a second store appears in the deployment spec and in every suite at once. -->
-        <qits.eventstream.version>2026.905.91315</qits.eventstream.version>
+        <qits.eventstream.version>2026.910.64632</qits.eventstream.version>
 
         <!-- The user-story framework (test scope). This repository's userflow catalogue is six IT
              classes on one profile — api/TokenValidationBootstrapIT plus service/…/stories/** — so
@@ -96,7 +96,7 @@
              qits-arch-rules and qits-auth-core above — so the same-string policy those three follow
              applies the day this repo consumes a newer reactor, and until then this names the
              release the mock idp arrived in. -->
-        <qits.service-mock.version>2026.905.91442</qits.service-mock.version>
+        <qits.service-mock.version>2026.906.171046</qits.service-mock.version>
 
         <qits.maven.repository.url>http://registry.dev.localhost:8080/artifacts/maven/maven</qits.maven.repository.url>
 
