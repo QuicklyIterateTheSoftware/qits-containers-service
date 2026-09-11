@@ -48,7 +48,7 @@ public class PlatformBuildkitTest {
     buildkit.cpus = "4";
     buildkit.memory = "8g";
     buildkit.pidsLimit = 4096;
-    buildkit.oomScoreAdj = 500;
+    buildkit.oomScoreAdj = 1000;
     buildkit.execNameservers = List.of("127.0.0.11");
   }
 

@@ -274,8 +274,11 @@ public final class DockerArgv {
    * <p>{@code --restart unless-stopped} because the builder outlives this service and a dockerd
    * restart — the {@code EXPLICIT} lifecycle's rendering, without the row (the builder is platform
    * infrastructure in {@code SharedResources}' sense: ensured at boot, claimed by nobody).
-   * {@code --oom-score-adj} positive for the same reason a step container's is: under memory
-   * pressure the kernel should take the build plane before a platform service.
+   * {@code --oom-score-adj} is the same number a step container's carries, not a lower one, because
+   * a build process inherits it: this score is what every native-image compile on the host runs
+   * under, so a smaller value would make image builds the last thing the kernel takes rather than
+   * the first. Under memory pressure a killed build is a red step that re-runs; a killed platform
+   * service, or a node the kernel had no candidate left on, is not.
    *
    * <p><b>The four bounds are {@code --cpus}, {@code --memory}, {@code --memory-swap} and
    * {@code --pids-limit}</b>, and the cpu/memory pair is not a duplicate of the step container's: a

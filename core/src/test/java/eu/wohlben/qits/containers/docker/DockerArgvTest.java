@@ -519,7 +519,7 @@ public class DockerArgvTest {
     List<String> argv =
         DockerArgv.runBuildkitd(
             "docker", "moby/buildkit:v0.33.0", "qits-net", "qits-buildkitd-state",
-            "[worker.oci]\n  gc = true\n", "cafe01", "4", "8g", 4096, 500);
+            "[worker.oci]\n  gc = true\n", "cafe01", "4", "8g", 4096, 1000);
 
     assertEquals(
         List.of(
@@ -546,7 +546,7 @@ public class DockerArgvTest {
             "--pids-limit",
             "4096",
             "--oom-score-adj",
-            "500",
+            "1000",
             "-v",
             "qits-buildkitd-state:/var/lib/buildkit",
             "-e",
