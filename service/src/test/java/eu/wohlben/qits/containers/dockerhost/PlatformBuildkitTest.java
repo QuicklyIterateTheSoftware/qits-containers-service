@@ -45,6 +45,8 @@ public class PlatformBuildkitTest {
             "mirror.dev.localhost:8080=qits-platform-mirror:8080");
     buildkit.httpRegistries = List.of("dev-qits-artifacts:8080", "qits-platform-mirror:8080");
     buildkit.keepStorageBytes = 20_000_000_000L;
+    buildkit.cpus = "4";
+    buildkit.memory = "8g";
     buildkit.pidsLimit = 4096;
     buildkit.oomScoreAdj = 500;
     buildkit.execNameservers = List.of("127.0.0.11");
@@ -122,6 +124,25 @@ public class PlatformBuildkitTest {
     String before = buildkit.configStamp(buildkit.buildkitdToml());
     buildkit.registryMirrors = List.of("registry.dev.localhost:8080=somewhere-else:8080");
     assertFalse(before.equals(buildkit.configStamp(buildkit.buildkitdToml())));
+  }
+
+  @Test
+  public void aChangedCpuOrMemoryBoundMovesTheStamp() {
+    // The bounds are as load-bearing as the pin here: the compile that a raised memory number is
+    // raised FOR runs inside this container, so a value that did not replace the builder would be
+    // configuration nothing applies — the running container would keep the old cap until somebody
+    // removed it by hand.
+    String before = buildkit.configStamp(buildkit.buildkitdToml());
+
+    buildkit.memory = "12g";
+    String afterMemory = buildkit.configStamp(buildkit.buildkitdToml());
+    assertFalse(before.equals(afterMemory), "a raised memory bound must replace the builder");
+
+    buildkit.memory = "8g";
+    buildkit.cpus = "8";
+    assertFalse(
+        before.equals(buildkit.configStamp(buildkit.buildkitdToml())),
+        "a changed cpu bound must replace the builder too");
   }
 
   @Test

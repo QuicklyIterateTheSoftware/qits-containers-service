@@ -96,6 +96,22 @@ public class PlatformBuildkit {
   @ConfigProperty(name = "qits.containers.buildkit.keep-storage-bytes")
   long keepStorageBytes;
 
+  /**
+   * The builder's CPU bound. A String because docker's {@code --cpus} takes a decimal, and a
+   * deployment that wants half a core should be able to say so without this field's type refusing
+   * it.
+   */
+  @ConfigProperty(name = "qits.containers.buildkit.cpus")
+  String cpus;
+
+  /**
+   * The builder's memory bound, docker's own size spelling — and a floor rather than a preference:
+   * every service's native compile runs INSIDE this container, so the step's own {@code --memory}
+   * bounds nothing about it. See the config file for which native-image heap sets the number.
+   */
+  @ConfigProperty(name = "qits.containers.buildkit.memory")
+  String memory;
+
   @ConfigProperty(name = "qits.containers.buildkit.pids-limit")
   long pidsLimit;
 
@@ -154,7 +170,7 @@ public class PlatformBuildkit {
     }
     ContainersDriver.Started started =
         driver.runBuildkitd(
-            image, network, STATE_VOLUME, toml, stamp, pidsLimit, oomScoreAdj,
+            image, network, STATE_VOLUME, toml, stamp, cpus, memory, pidsLimit, oomScoreAdj,
             ContainersTimeouts.RUN);
     if (!started.started()) {
       LOG.warnf("Could not run the platform builder: %s", started.detail());
@@ -179,6 +195,10 @@ public class PlatformBuildkit {
             + network
             + "\n"
             + toml
+            + "\n"
+            + cpus
+            + "\n"
+            + memory
             + "\n"
             + pidsLimit
             + "\n"

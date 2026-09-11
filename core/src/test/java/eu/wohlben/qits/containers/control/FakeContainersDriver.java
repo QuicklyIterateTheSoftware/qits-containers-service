@@ -270,6 +270,8 @@ public class FakeContainersDriver implements ContainersDriver {
       String stateVolume,
       String toml,
       String configStamp,
+      String cpus,
+      String memory,
       long pidsLimit,
       int oomScoreAdj,
       Duration timeout) {

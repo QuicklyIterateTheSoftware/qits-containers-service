@@ -519,7 +519,7 @@ public class DockerArgvTest {
     List<String> argv =
         DockerArgv.runBuildkitd(
             "docker", "moby/buildkit:v0.33.0", "qits-net", "qits-buildkitd-state",
-            "[worker.oci]\n  gc = true\n", "cafe01", 4096, 500);
+            "[worker.oci]\n  gc = true\n", "cafe01", "4", "8g", 4096, 500);
 
     assertEquals(
         List.of(
@@ -537,6 +537,12 @@ public class DockerArgvTest {
             "--privileged",
             "--restart",
             "unless-stopped",
+            "--cpus",
+            "4",
+            "--memory",
+            "8g",
+            "--memory-swap",
+            "8g",
             "--pids-limit",
             "4096",
             "--oom-score-adj",
@@ -551,6 +557,26 @@ public class DockerArgvTest {
             "-c",
             DockerArgv.BUILDKITD_BOOTSTRAP),
         argv);
+  }
+
+  @Test
+  public void thePlatformBuilderGetsNoSwapWhateverTheMemoryBoundIs() {
+    // --memory-swap equal to --memory is docker's spelling of "no swap at all", and it is the half
+    // of this bound that keeps a build that reached the cap from thrashing the host instead of
+    // dying. A value of its own here — or an absent flag, which lets docker default swap to twice
+    // the memory — is the regression, so the two are asserted against each other rather than
+    // against a literal.
+    List<String> argv =
+        DockerArgv.runBuildkitd(
+            "docker", "moby/buildkit:v0.33.0", "qits-net", "qits-buildkitd-state",
+            "[worker.oci]\n  gc = true\n", "cafe01", "1.5", "12g", 4096, 500);
+
+    assertEquals("12g", argv.get(argv.indexOf("--memory") + 1));
+    assertEquals(
+        argv.get(argv.indexOf("--memory") + 1),
+        argv.get(argv.indexOf("--memory-swap") + 1),
+        "memory-swap must be the memory bound, which is how swap is switched off");
+    assertEquals("1.5", argv.get(argv.indexOf("--cpus") + 1), "a decimal survives the rendering");
   }
 
   @Test

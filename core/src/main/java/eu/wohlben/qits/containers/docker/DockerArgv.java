@@ -269,13 +269,23 @@ public final class DockerArgv {
    * prevent — and buildkitd cannot mount overlayfs for its build sandboxes without it. The whole
    * argv is this method's, with nothing caller-shaped in it: the name is the
    * {@link ContainersIdentifiers#PLATFORM_BUILDER} constant, the image and the toml come from this
-   * service's own configuration, and both bounds are rendered unconditionally.
+   * service's own configuration, and every bound is rendered unconditionally.
    *
    * <p>{@code --restart unless-stopped} because the builder outlives this service and a dockerd
    * restart — the {@code EXPLICIT} lifecycle's rendering, without the row (the builder is platform
    * infrastructure in {@code SharedResources}' sense: ensured at boot, claimed by nobody).
    * {@code --oom-score-adj} positive for the same reason a step container's is: under memory
    * pressure the kernel should take the build plane before a platform service.
+   *
+   * <p><b>The four bounds are {@code --cpus}, {@code --memory}, {@code --memory-swap} and
+   * {@code --pids-limit}</b>, and the cpu/memory pair is not a duplicate of the step container's: a
+   * service's native compile runs in its Dockerfile's build stage, which under this builder
+   * executes <em>here</em>, so the step's own {@code --cpus}/{@code --memory} bound nothing about
+   * it and an unbounded builder was an unbounded machine. {@code --memory-swap} is rendered equal
+   * to {@code --memory}, which is docker's spelling of "no swap": a build that reaches the cap is
+   * killed promptly instead of thrashing the host it shares. Both values are configuration's, where
+   * the floor the heaviest native-image heap sets is written down; {@code cpus} is a String because
+   * docker takes a decimal there.
    */
   public static List<String> runBuildkitd(
       String runtimeBinary,
@@ -284,6 +294,8 @@ public final class DockerArgv {
       String stateVolume,
       String toml,
       String configStamp,
+      String cpus,
+      String memory,
       long pidsLimit,
       int oomScoreAdj) {
     ContainersIdentifiers.requireImage(image);
@@ -304,6 +316,13 @@ public final class DockerArgv {
         "--privileged",
         "--restart",
         "unless-stopped",
+        "--cpus",
+        cpus,
+        "--memory",
+        memory,
+        // Equal to --memory: docker reads that as "no swap", which is the point — see the javadoc.
+        "--memory-swap",
+        memory,
         "--pids-limit",
         String.valueOf(pidsLimit),
         "--oom-score-adj",
@@ -322,8 +341,9 @@ public final class DockerArgv {
   /**
    * The configuration stamp a container was started with — {@value #BUILDKITD_STAMP_LABEL}. The
    * boot pass asks "is the running builder the CONFIGURED builder", and the stamp is the whole
-   * answer: image, toml, bounds and network in one hash, so any moved value replaces the container
-   * rather than adopting one that no longer matches what a deployment says.
+   * answer: image, toml, the bounds (cpus, memory, pids, oom score) and network in one hash, so any
+   * moved value replaces the container rather than adopting one that no longer matches what a
+   * deployment says.
    */
   public static List<String> inspectBuildkitdStamp(String runtimeBinary, String name) {
     return List.of(

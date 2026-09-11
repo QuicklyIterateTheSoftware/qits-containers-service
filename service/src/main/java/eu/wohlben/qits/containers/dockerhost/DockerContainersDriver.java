@@ -125,6 +125,8 @@ public class DockerContainersDriver implements ContainersDriver {
       String stateVolume,
       String toml,
       String configStamp,
+      String cpus,
+      String memory,
       long pidsLimit,
       int oomScoreAdj,
       Duration timeout) {
@@ -132,7 +134,8 @@ public class DockerContainersDriver implements ContainersDriver {
         ContainerProcess.run(
             null,
             DockerArgv.runBuildkitd(
-                runtime, image, network, stateVolume, toml, configStamp, pidsLimit, oomScoreAdj),
+                runtime, image, network, stateVolume, toml, configStamp, cpus, memory, pidsLimit,
+                oomScoreAdj),
             timeout,
             ContainersTimeouts.RUN_MAX_CHARS);
     if (!succeeded(result)) {

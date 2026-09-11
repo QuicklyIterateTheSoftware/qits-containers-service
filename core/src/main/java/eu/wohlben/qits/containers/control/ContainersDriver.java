@@ -99,7 +99,7 @@ public interface ContainersDriver {
    */
   Started runBuildkitd(
       String image, String network, String stateVolume, String toml, String configStamp,
-      long pidsLimit, int oomScoreAdj, Duration timeout);
+      String cpus, String memory, long pidsLimit, int oomScoreAdj, Duration timeout);
 
   /** Stop it, leaving it restartable. */
   OpResult stop(String name, Duration timeout);
