@@ -74,6 +74,7 @@ public class GcResource {
    * than reporting per item: a usage nobody could measure must not come back as an empty host.
    */
   @GET
+  @jakarta.annotation.security.RolesAllowed({"qits:system", "qits:agent"})
   @Path("/usage")
   @Operation(summary = "What the host's images, containers, volumes and build cache hold")
   @APIResponse(responseCode = "200", description = "The four stores, as docker reports them")

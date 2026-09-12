@@ -150,6 +150,7 @@ public class ContainersResource {
 
   /** What is at this place. 404 only when no live row names it — see the class javadoc. */
   @GET
+  @jakarta.annotation.security.RolesAllowed({"qits:system", "qits:agent"})
   @Path("/{owner}/{workload}/{ref}")
   @Operation(summary = "What is at this place")
   @APIResponse(responseCode = "200", description = "The place")
@@ -164,6 +165,7 @@ public class ContainersResource {
 
   /** Every live place of this owner, oldest first. */
   @GET
+  @jakarta.annotation.security.RolesAllowed({"qits:system", "qits:agent"})
   @Path("/{owner}")
   @Operation(summary = "Every live place of this owner")
   public ListResponse listOwner(@PathParam("owner") String owner) {
@@ -173,6 +175,7 @@ public class ContainersResource {
 
   /** Every live place of one of this owner's workloads, oldest first. */
   @GET
+  @jakarta.annotation.security.RolesAllowed({"qits:system", "qits:agent"})
   @Path("/{owner}/{workload}")
   @Operation(summary = "Every live place of one of this owner's workloads")
   public ListResponse listWorkload(
@@ -189,6 +192,7 @@ public class ContainersResource {
    * this service carries {@code --rm}.
    */
   @GET
+  @jakarta.annotation.security.RolesAllowed({"qits:system", "qits:agent"})
   @Path("/{owner}/{workload}/{ref}/logs")
   @Operation(summary = "A bounded tail of what this container printed")
   @APIResponse(responseCode = "404", description = "No row names this place")

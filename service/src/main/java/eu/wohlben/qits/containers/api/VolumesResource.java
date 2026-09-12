@@ -54,6 +54,7 @@ public class VolumesResource {
 
   /** The row claiming this volume. 404 only when this owner claims none by that name. */
   @GET
+  @jakarta.annotation.security.RolesAllowed({"qits:system", "qits:agent"})
   @Path("/{owner}/{name}")
   @Operation(summary = "The row claiming this volume")
   @APIResponse(responseCode = "404", description = "This owner claims no volume by that name")

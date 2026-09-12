@@ -60,6 +60,11 @@ final class MachineTokens {
     return token(clientId, Set.of(), audiences);
   }
 
+  /** An agent's token: its own role, {@code qits:agent}, and none of its owner's. */
+  static String agentToken(String clientId, String... audiences) {
+    return token(clientId, Set.of("qits:agent"), audiences);
+  }
+
   private static String token(String clientId, Set<String> roles, String... audiences) {
     return Jwt.claims()
         .issuer(ISSUER)
