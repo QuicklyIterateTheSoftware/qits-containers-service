@@ -34,9 +34,8 @@ import org.junit.jupiter.api.TestMethodOrder;
  * it and then stops exactly where this one starts — it inlines {@code quarkus.oidc.public-key} and
  * clears {@code auth-server-url}, so nothing there ever fetches a key. The block this service
  * actually deploys with (auth-server-url plus {@code discovery-enabled=false} and
- * {@code jwks-path=jwks} joined onto it, {@code token.audience} resolved through
- * {@code ${qits.auth.machine.audience}}, the {@code groups} claim becoming roles) is therefore
- * exercised nowhere else. The far side is {@link MockIdp}, whose recordings make the interaction
+ * {@code jwks-path=jwks} joined onto it, {@code token.audience=qits-platform}, the {@code groups}
+ * claim becoming roles) is therefore exercised nowhere else. The far side is {@link MockIdp}, whose recordings make the interaction
  * assertable on <b>both ends</b>.
  *
  * <p>It is also the <b>first class of this repository's userflow catalogue</b>, and the one that runs
@@ -91,11 +90,11 @@ public class TokenValidationBootstrapIT {
    * therefore the owner of the rows it may reach. It is the {@code sub} of the token AND the owner
    * in the path, because that is this service's whole guard: see {@link OwnerGuard}.
    *
-   * <p>Unprefixed, and its audience below is unprefixed with it. A deployed tier mints both with
-   * its environment on the front — {@code dev-qits-ci} presenting {@code dev-qits-containers} — and
+   * <p>Unprefixed, while a deployed tier mints {@code dev-qits-ci}; the audience below carries no
+   * tier at all, because there is one platform audience and it is the same string everywhere.
    * {@link MachineGuardTest} is where that prefix is pinned, since it is the half OwnerGuard argues
-   * about rather than the half a JWKS fetch proves. What matters here is that the two names agree,
-   * and one naming used consistently says that without inventing a tier this test is not in.
+   * about rather than the half a JWKS fetch proves, and one naming used consistently says what
+   * matters here without inventing a tier this test is not in.
    */
   static final String OWNER = "qits-ci";
 
@@ -143,15 +142,14 @@ public class TokenValidationBootstrapIT {
   public static class PackagedWithMockIdp extends ContainersPackagedSurfaceIT.PackagedUnderTarget {
 
     /**
-     * The audience this service enforces, and it is a LITERAL rather than a variable name.
-     * {@code qits.auth.machine.audience=qits-containers} is spelled out in
-     * {@code application.properties} — the default stays the bare name so an environment-qualified
-     * one is not baked into an image every tier shares — so the audience under test is the shipped
-     * one and there is no expression to feed. {@code
-     * quarkus.oidc.token.audience=${qits.auth.machine.audience}} is what carries it to quarkus-oidc,
-     * so minting against this string is also what proves that indirection is read.
+     * The audience this service enforces: {@code qits-platform}, the one the platform has. qits-idp
+     * puts it on every token it mints, whatever the client asked for, so a caller is addressed here
+     * by holding it and there is nothing per-service to qualify. {@code
+     * quarkus.oidc.token.audience=qits-platform} is spelled as a literal in
+     * {@code application.properties} too, so minting against this string is minting against the
+     * shipped configuration.
      */
-    static final String AUDIENCE = "qits-containers";
+    static final String AUDIENCE = "qits-platform";
 
     @Override
     public Map<String, String> getConfigOverrides() {
@@ -303,7 +301,7 @@ public class TokenValidationBootstrapIT {
         .as("jwks-fetched");
 
     // End (b), the containers side: those keys are what token validation now runs on. A platform
-    // service's bearer (aud = this service, roles in `groups`) opens the guarded inventory listing.
+    // service's bearer (aud = the platform, roles in `groups`) opens the guarded inventory listing.
     //
     // GET /containers/api/containers/{owner} is the right door for this story on three counts. It
     // is a plain read of this service's own rows — no docker call anywhere on the path, so what it
@@ -333,7 +331,7 @@ public class TokenValidationBootstrapIT {
         .statusCode(200)
         .body("containers", notNullValue());
     story
-        .note("qits-ci's own bearer (aud=qits-containers, groups=[qits:system]) opens its rows")
+        .note("qits-ci's own bearer (aud=qits-platform, groups=[qits:system]) opens its rows")
         .as("inventory-served");
   }
 
@@ -343,7 +341,7 @@ public class TokenValidationBootstrapIT {
   @UserStoryDescription(
       """
       The flip side of trusting the platform's keys, and it has two halves. A token signed by a key
-      the published JWKS never carried, or minted for another service's audience, is refused at the
+      the published JWKS never carried, or addressed to anything but the platform, is refused at the
       door — however well-formed it looks — and both are 401 and not 403: the credential never
       became an identity, so there is no caller to have been forbidden. Then the half no sibling
       service has: a token that is impeccable and is somebody else's is refused 403, because the
@@ -378,8 +376,9 @@ public class TokenValidationBootstrapIT {
         .note("a token signed by a key the published JWKS never carried is refused")
         .as("unknown-key-refused");
 
-    // qits-githost and not an invented name: it is a real audience the platform's idp mints, so the
-    // story documents the confusion that could actually happen on qits-net rather than a strawman.
+    // qits-githost and not an invented name: it is a sibling on qits-net, so the story documents
+    // the confusion somebody could actually reach for rather than a strawman. The platform mints one
+    // audience and this is not it, whatever the name on it says.
     String wrongAudienceToken =
         idp.token().subject(OWNER).audience("qits-githost").groups("qits:system").mint();
     MINTED.add(wrongAudienceToken);

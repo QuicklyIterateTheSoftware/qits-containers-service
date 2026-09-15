@@ -33,25 +33,23 @@ import io.restassured.specification.RequestSpecification;
 public final class StoryIdentities {
 
   /**
-   * The audience this service enforces, and it is a LITERAL rather than a variable name.
-   * {@code qits.auth.machine.audience=qits-containers} is spelled out in {@code
-   * application.properties} — the default stays the bare name so an environment-qualified one is not
-   * baked into an image every tier shares — so the audience under test is the shipped one and there
-   * is no expression to feed. {@code quarkus.oidc.token.audience=${qits.auth.machine.audience}} is
-   * what carries it to quarkus-oidc, so minting against this string is also what proves that
-   * indirection is read.
+   * The audience this service enforces: {@code qits-platform}, the one the platform has. qits-idp
+   * puts it on every token it mints, whatever the client asked for, so a caller is addressed here by
+   * holding it and there is nothing per-service to qualify. {@code
+   * quarkus.oidc.token.audience=qits-platform} is spelled as a literal in {@code
+   * application.properties} too, so minting against this string is minting against the shipped
+   * configuration.
    */
-  public static final String AUDIENCE = "qits-containers";
+  public static final String AUDIENCE = "qits-platform";
 
   /** The coarse machine role every route of this service demands. */
   public static final String MACHINE_ROLE = "qits:system";
 
   /**
    * The consumer this catalogue is mostly told from: qits-ci, which PUTs an ensure for every build
-   * step and DELETEs it when the step is over. Unprefixed, like the audience — a deployed tier mints
-   * {@code dev-qits-ci} presenting {@code dev-qits-containers}, and {@code MachineGuardTest} is
-   * where that prefix is pinned, since it is the half OwnerGuard argues about rather than the half a
-   * story exercises.
+   * step and DELETEs it when the step is over. Unprefixed, while a deployed tier mints
+   * {@code dev-qits-ci}; {@code MachineGuardTest} is where that prefix is pinned, since it is the
+   * half OwnerGuard argues about rather than the half a story exercises.
    */
   public static final String CI = "qits-ci";
 
@@ -97,7 +95,10 @@ public final class StoryIdentities {
     return MockIdp.attach().token().subject(subject).audience(AUDIENCE).mint();
   }
 
-  /** A token minted for a real sibling's audience — the confusion that could happen on qits-net. */
+  /**
+   * A token addressed to something other than the platform — a sibling service's own name, which is
+   * the confusion that could be imagined on qits-net.
+   */
   public static String foreignAudienceToken(String subject) {
     return MockIdp.attach()
         .token()

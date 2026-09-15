@@ -93,8 +93,8 @@ public class AccessRefusalIT {
   @UserStoryDescription(
       """
       Four different refusals, and each is a different door. No credential at all is 401 — there is
-      no caller yet, so there is nobody to have been forbidden. A token minted for another service's
-      audience is 401 too, refused by validation before an identity exists, which is why it reads
+      no caller yet, so there is nobody to have been forbidden. A token addressed to anything but
+      the platform is 401 too, refused by validation before an identity exists, which is why it reads
       the same from outside even though a completely different thing went wrong. A token this
       service authenticated but whose client was granted no roles is 403: understood, and missing a
       grant. And a value this service will not put in an argv is 400 with the field named in it,

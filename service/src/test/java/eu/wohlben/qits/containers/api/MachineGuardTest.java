@@ -11,8 +11,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Every route with the gate ON — the posture a deployment reaches by setting
- * {@code QITS_AUTH_MACHINE_REQUIRED=true} once qits-idp grants the {@code qits-containers}
- * audience.
+ * {@code QITS_AUTH_MACHINE_REQUIRED=true}.
  *
  * <p>Tokens are real: signed RS256, verified by quarkus-oidc against the public key in
  * {@link MachineGuardProfile}. So these cases fail if the OIDC configuration in
@@ -25,9 +24,9 @@ import org.junit.jupiter.api.Test;
  * two owners — and that prefix is exactly what keeps two environments sharing one docker daemon
  * from reaching each other's containers.
  *
- * <p><b>Three doors, and this suite pins which one shuts first.</b> A token minted for another
- * service is refused by {@code quarkus.oidc.token.audience} before any identity is built, so the
- * answer is a 401 challenge. A token addressed here but granted no roles authenticates and is
+ * <p><b>Three doors, and this suite pins which one shuts first.</b> A token that does not carry the
+ * platform audience is refused by {@code quarkus.oidc.token.audience} before any identity is built,
+ * so the answer is a 401 challenge. A token addressed here but granted no roles authenticates and is
  * refused 403 by the {@code @RolesAllowed("qits:system")} both resources carry — qits-idp copies a
  * client's {@code roles} into the token's {@code groups} claim and quarkus-oidc reads that claim as
  * roles with no configuration at all. A token that holds the role and is somebody else's is refused
@@ -49,10 +48,10 @@ class MachineGuardTest {
   /** Another platform module, with a perfectly good token of its own. */
   private static final String OTHER_OWNER = "dev-qits-workspaces";
 
-  /** This service's id — the config default, injected per environment in a deployment. */
-  private static final String OWN_AUDIENCE = "qits-containers";
+  /** The one platform audience, which every token qits-idp mints carries. */
+  private static final String PLATFORM_AUDIENCE = "qits-platform";
 
-  /** A valid platform audience that is not ours. */
+  /** An audience that is not it, and therefore a token no platform caller holds. */
   private static final String FOREIGN_AUDIENCE = "prod-qits-deployments";
 
   private static final String OWN_PLACE = "/containers/api/containers/dev-qits-ci/step/guarded";
@@ -79,7 +78,7 @@ class MachineGuardTest {
   }
 
   @Test
-  void aTokenMintedForAnotherServiceIsRefused() {
+  void aTokenWithoutThePlatformAudienceIsRefused() {
     given()
         .contentType(ContentType.JSON)
         .header("Authorization", "Bearer " + MachineTokens.token(OWNER, FOREIGN_AUDIENCE))
@@ -96,7 +95,7 @@ class MachineGuardTest {
     // signed, correctly addressed, empty `groups`. It is this owner's own token and it still covers
     // nothing, because @RolesAllowed shuts before OwnerGuard is ever asked. A 403 rather than the
     // 401 an absent token gets, which is what tells a missing grant from a missing sender.
-    String roleless = "Bearer " + MachineTokens.rolelessToken(OWNER, OWN_AUDIENCE);
+    String roleless = "Bearer " + MachineTokens.rolelessToken(OWNER, PLATFORM_AUDIENCE);
 
     given()
         .contentType(ContentType.JSON)
@@ -163,7 +162,7 @@ class MachineGuardTest {
     given().when().get("/containers/api/gc/usage").then().statusCode(401);
 
     given()
-        .header("Authorization", "Bearer " + MachineTokens.rolelessToken(OWNER, OWN_AUDIENCE))
+        .header("Authorization", "Bearer " + MachineTokens.rolelessToken(OWNER, PLATFORM_AUDIENCE))
         .when()
         .get("/containers/api/gc/usage")
         .then()
@@ -174,7 +173,7 @@ class MachineGuardTest {
     given()
         .header(
             "Authorization",
-            "Bearer " + MachineTokens.token("dev-qits-platform-orchestrator", OWN_AUDIENCE))
+            "Bearer " + MachineTokens.token("dev-qits-platform-orchestrator", PLATFORM_AUDIENCE))
         .contentType(ContentType.JSON)
         .body("{\"dryRun\":true}")
         .when()
@@ -186,6 +185,6 @@ class MachineGuardTest {
   /** A caller holding a fresh token of its own, addressed to this service. */
   private static RequestSpecification machine() {
     return given()
-        .header("Authorization", "Bearer " + MachineTokens.token(OWNER, OWN_AUDIENCE));
+        .header("Authorization", "Bearer " + MachineTokens.token(OWNER, PLATFORM_AUDIENCE));
   }
 }

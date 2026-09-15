@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 class AgentReadAccessTest {
 
   private static final String OWNER = "dev-qits-ci";
-  private static final String OWN_AUDIENCE = "qits-containers";
+  private static final String PLATFORM_AUDIENCE = "qits-platform";
   private static final String PLACE = "/containers/api/containers/dev-qits-ci/agent/reads";
   private static final String VOLUME = "/containers/api/volumes/dev-qits-ci/agent-reads";
 
@@ -32,15 +32,15 @@ class AgentReadAccessTest {
       """
       {"spec":{"image":"alpine:3","network":"qits-net"},"policy":{"type":"EXPLICIT"}}""";
 
-  /** The owner itself, holding the system roles — how the rows are seeded and cleaned up. */
+  /** The owner itself, holding the system role — how the rows are seeded and cleaned up. */
   private static RequestSpecification owner() {
-    return given().header("Authorization", "Bearer " + MachineTokens.token(OWNER, OWN_AUDIENCE));
+    return given().header("Authorization", "Bearer " + MachineTokens.token(OWNER, PLATFORM_AUDIENCE));
   }
 
   /** A token holding only {@code qits:agent}. */
   private static RequestSpecification agent() {
     return given()
-        .header("Authorization", "Bearer " + MachineTokens.agentToken(OWNER, OWN_AUDIENCE));
+        .header("Authorization", "Bearer " + MachineTokens.agentToken(OWNER, PLATFORM_AUDIENCE));
   }
 
   @Test
@@ -93,7 +93,7 @@ class AgentReadAccessTest {
     given()
         .header(
             "Authorization",
-            "Bearer " + MachineTokens.agentToken("dyn-agent-container-reads", OWN_AUDIENCE))
+            "Bearer " + MachineTokens.agentToken("dyn-agent-container-reads", PLATFORM_AUDIENCE))
         .when()
         .get("/containers/api/containers/dev-qits-ci")
         .then()

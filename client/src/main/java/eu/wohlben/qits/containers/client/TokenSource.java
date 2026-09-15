@@ -7,15 +7,15 @@ import java.util.Optional;
  *
  * <p><b>A seam rather than a dependency.</b> This jar mints nothing, caches nothing and knows no
  * issuer: the platform has exactly one answer to "who is calling" and it lives in qits-idp and
- * qits-auth-core. A consumer that already holds a token for {@code <env>-qits-containers} hands it
- * over here; a consumer with none returns {@link Optional#empty()} and the client sends no
- * {@code Authorization} header at all.
+ * qits-auth-core. A consumer that already holds a platform token — the one audience, {@code
+ * qits-platform}, which every token qits-idp mints carries — hands it over here; a consumer with
+ * none returns {@link Optional#empty()} and the client sends no {@code Authorization} header at all.
  *
  * <p><b>Empty is the shipped posture, not a degraded one.</b> The service's rollout gate
  * ({@code qits.auth.machine.required}) ships off everywhere, and with it off the owner in the path
  * is trusted — network trust, no bearer, exactly as every sibling behaves today. So a consumer can
- * be wired up and cut over before qits-idp grants the audience, and turning the gate on is a
- * deployment change on both sides rather than a code change on either.
+ * be wired up and cut over before it holds a token at all, and turning the gate on is a deployment
+ * change on both sides rather than a code change on either.
  *
  * <p><b>It is asked per request on purpose.</b> A token expires and a client that captured one at
  * construction would hold it until the process restarted. The consumer's implementation is where

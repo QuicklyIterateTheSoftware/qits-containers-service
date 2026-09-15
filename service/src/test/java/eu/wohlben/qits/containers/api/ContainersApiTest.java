@@ -32,8 +32,8 @@ import org.junit.jupiter.api.Test;
  * which gives up loudly rather than answering empty — that is what makes this claim hold for a
  * database that is down as well as for one that is up.
  *
- * <p><b>The gate is off here</b>, which is the shipped default and the deployment posture until
- * qits-idp grants this service an audience. What the gate ON looks like is {@link MachineGuardTest}
+ * <p><b>The gate is off here</b>, which is the shipped default. What the gate ON looks like is
+ * {@link MachineGuardTest}
  * next door; splitting them is the same arrangement every sibling has, because a suite that had to
  * hold a token for every call would say nothing about either.
  */
