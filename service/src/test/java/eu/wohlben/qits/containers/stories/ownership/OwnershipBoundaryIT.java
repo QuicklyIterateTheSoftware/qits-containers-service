@@ -103,7 +103,7 @@ public class OwnershipBoundaryIT {
   @UserStoryDescription(
       """
       qits-workspaces holds an impeccable machine token: the platform's own issuer signed it, the
-      audience is this service, and it carries the coarse machine role every route here demands. It
+      audience is the platform's, and it carries the coarse machine role every route here demands. It
       is still refused 403 on every route addressed to qits-ci — starting a container there, taking
       one away, and even reading the inventory. That is OwnerGuard, and 403 rather than 401 is the
       distinction an operator needs: the token was understood, and the grant it is missing is

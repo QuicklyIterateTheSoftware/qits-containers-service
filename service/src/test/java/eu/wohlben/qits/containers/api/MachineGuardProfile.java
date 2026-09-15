@@ -14,7 +14,7 @@ import java.util.Set;
  * key alone is not enough, because a tenant that still has a server URL tries to reach it on the
  * first bearer and answers 500 when it cannot. Clearing the URL also drops the issuer that came
  * with it, so {@code token.issuer} is stated explicitly and {@code iss} stays checked. The
- * signature and {@code aud=qits-containers} are the shipped configuration, checked by the real
+ * signature and {@code aud=qits-platform} are the shipped configuration, checked by the real
  * extension exactly as they will be against the real idp.
  *
  * <p><b>The dev user is switched off</b>, and that is load-bearing rather than tidy. Under

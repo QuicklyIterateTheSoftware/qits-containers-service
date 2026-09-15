@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The client's {@link TokenSource} against the gate ON — the posture a deployment reaches by
- * setting {@code QITS_AUTH_MACHINE_REQUIRED=true} once qits-idp grants this service an audience.
+ * setting {@code QITS_AUTH_MACHINE_REQUIRED=true}.
  *
  * <p><b>Nothing is faked between the two halves.</b> The token is real and RS256-signed, quarkus-oidc
  * validates it against the public key in {@link MachineGuardProfile}, and {@link OwnerGuard}
@@ -54,8 +54,8 @@ class ContainersClientGuardedWireTest {
   /** Another platform module, with a perfectly good token of its own. */
   private static final String OTHER_OWNER = "dev-qits-workspaces";
 
-  /** This service's id — the config default, injected per environment in a deployment. */
-  private static final String AUDIENCE = "qits-containers";
+  /** The one platform audience, which every token qits-idp mints carries. */
+  private static final String AUDIENCE = "qits-platform";
 
   private static final EnsureRequest ENSURE =
       EnsureRequest.of(Spec.of("alpine:3", "qits-net"), Policy.explicitLifetime());

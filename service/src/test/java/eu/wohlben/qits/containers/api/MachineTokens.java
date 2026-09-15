@@ -38,14 +38,14 @@ final class MachineTokens {
   static final String ISSUER = "http://qits-platform-idp:8080/idp";
 
   /**
-   * The two coarse machine roles qits-idp grants every platform service client — the shipped {@code
-   * qits.idp.client.<id>.roles} of qits-ci, qits-workspaces, qits-projects and qits-artifacts alike.
-   * The routes here ask for the first of them.
+   * The coarse machine role qits-idp grants every platform service client — the shipped {@code
+   * qits.idp.client.<id>.roles} of qits-ci, qits-workspaces, qits-projects and qits-artifacts alike,
+   * and the one every route here asks for.
    */
-  static final Set<String> SYSTEM_ROLES = Set.of("qits:system", "qits-platform:system");
+  static final Set<String> SYSTEM_ROLES = Set.of("qits:system");
 
   /**
-   * A token from {@code clientId}, addressed to {@code audiences}, carrying the machine roles a
+   * A token from {@code clientId}, addressed to {@code audiences}, carrying the machine role a
    * platform service client holds. Valid for five minutes.
    */
   static String token(String clientId, String... audiences) {

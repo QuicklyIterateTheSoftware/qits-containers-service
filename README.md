@@ -381,9 +381,9 @@ blank and renders no flag at all, which is the argv this service shipped before 
 ### What else a deployment may set
 
 Everything else has a shipped default and a deployment overrides what it means to:
-`QITS_AUTH_MACHINE_REQUIRED=true` with `QITS_AUTH_MACHINE_AUDIENCE=<env>-qits-containers` turns the
-gate on — one platform-wide gate, shipped off, and turning it on with no audience set fails at
-startup rather than accepting tokens addressed elsewhere. `QITS_CONTAINERS_INSTANCE` distinguishes
+`QITS_AUTH_MACHINE_REQUIRED=true` turns the gate on — one platform-wide gate, shipped off, and the
+audience it validates against is the shipped `qits-platform`, the one audience every token qits-idp
+mints carries, so no deployment names one of its own. `QITS_CONTAINERS_INSTANCE` distinguishes
 two instances in `docker ps`; `QITS_CONTAINERS_NETWORK` and `QITS_CONTAINERS_SHARED_VOLUMES` name
 what the boot step makes sure of; `QITS_CONTAINERS_PROXY_ENABLED=true` switches the data plane on,
 and no deployment sets it yet.

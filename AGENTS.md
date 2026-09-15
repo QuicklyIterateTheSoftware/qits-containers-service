@@ -39,7 +39,7 @@ the key pair in `service/src/test/resources/machine-token-*.pem`, and `MachineGu
 quarkus-oidc the public half, so the enforced path runs end to end with no qits-idp to reach. Those
 PEMs are test fixtures, not credentials. A token minted with only `iss`/`sub`/`aud` authenticates
 perfectly and is then refused 403 on every route — the failure that kept this repository red through
-its first two CI runs — so `token(...)` mints the two system roles and `rolelessToken(...)` mints the
+its first two CI runs — so `token(...)` mints the system role and `rolelessToken(...)` mints the
 empty set on purpose, to assert that refusal rather than meet it by accident.
 
 ## The two invariants this repo exists for
@@ -134,10 +134,12 @@ exempt, including the ones that "cannot" block.
   two environments sharing one docker daemon apart. With the rollout gate off (the shipped default)
   the path owner is trusted, exactly as every sibling behaves.
 
-  **Three doors, and knowing which shut is how a grant is debugged.** A token minted for another
-  service is refused **401** by `quarkus.oidc.token.audience` before any identity exists. A token
-  addressed here whose client was granted no roles authenticates and is refused **403** by
-  `@RolesAllowed`. A token holding the role but belonging to another owner is refused **403** by
+  **Three doors, and knowing which shut is how a grant is debugged.** A token that does not carry
+  the platform audience `qits-platform` is refused **401** by `quarkus.oidc.token.audience` before
+  any identity exists — qits-idp puts that audience on every token it mints, so this door shuts on
+  a credential from outside the platform rather than on a peer. A token addressed here whose client
+  was granted no roles authenticates and is refused **403** by `@RolesAllowed`. A token holding the
+  role but belonging to another owner is refused **403** by
   `OwnerGuard`. No credential at all is 401. `MachineGuardTest` pins all four.
 - **The datasource, the persistence unit and the Flyway lineage live in `core`**, shipped as
   ordinal-100 defaults in `META-INF/microprofile-config.properties`. The app's own settings are in
