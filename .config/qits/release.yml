@@ -1,0 +1,125 @@
+archetype: java-service
+artifacts:
+  - { type: maven, name: "eu.wohlben.qits:qits-containers-core" }
+  - { type: maven, name: "eu.wohlben.qits:qits-containers-client" }
+  - { type: docker, name: qits/qits-containers, sbom: .sbom/sbom.json }
+userflows: qits-containers
+
+# TWO JARS AND AN IMAGE. maven-library's header names this repository as the case that is neither
+# archetype: the image half is java-service's and the jar half is maven-library's, and no recipe
+# does both. The QA half is three steps rather than two — a unit gate on `maven-base` as `build`
+# BEFORE the image builds, because a broken jar must not cost a native compile.
+#
+# THE TWO JARS ARE DECLARED WITHOUT `sbom:` ON PURPOSE. The composed postlude lands on ONE step —
+# the last declaring `build:`/`docker:`, which is the image step below — and steps share no working
+# directory: each is an ephemeral container with its own clone. `core/target/sbom.json` exists only
+# in the step that ran makeBom, so declaring it here would emit a submit for a file that is not
+# there and fail the release. The jar step submits its own two documents inline instead, with the
+# same CLI and the same policy the postlude uses. Only the image's SBOM, written in the step the
+# postlude runs on, is declared.
+release-request:
+  - image: qits/build-images/maven-base:latest
+    user: build
+    timeout-seconds: 1800
+    script: |
+      export QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL"
+      export QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}"
+      ./mvnw -B -ntp -s .qits-maven-settings.xml verify \
+        -Dqits.maven.repository.url="$QITS_MAVEN_REPOSITORY_URL"
+
+  - image: qits/build-images/ci-base:latest
+    build: true
+    timeout-seconds: 3600
+    script: |
+      buildctl build --frontend dockerfile.v0 \
+        --local context=. --local dockerfile=docker \
+        --opt build-arg:QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL" \
+        --opt build-arg:QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}" \
+        --secret id=qits-client-id,src=/tmp/qits-client-id \
+        --secret id=qits-client-secret,src=/tmp/qits-client-secret
+
+  - image: qits/build-images/maven-base:latest
+    user: build
+    gating: false
+    timeout-seconds: 2400
+    script: |
+      export QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL"
+      export QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}"
+      ./mvnw -B -ntp -s .qits-maven-settings.xml verify \
+        -Dqits.maven.repository.url="$QITS_MAVEN_REPOSITORY_URL" \
+        -DskipITs=false \
+        "-Dit.test=TokenValidationBootstrapIT,HostBootstrapIT,WorkloadLifecycleIT,OwnershipBoundaryIT,WorkloadReapIT,AccessRefusalIT"
+      stories_dir=$(find . -maxdepth 3 -type d -path '*/target/userstories' | head -1)
+      : "${stories_dir:?the verify produced no */target/userstories}"
+      tar -czf /tmp/userstories.tgz -C "$stories_dir" .
+      status=$(curl -sS -o /tmp/docs-publish.out -w '%{http_code}' \
+        -X PUT --data-binary @/tmp/userstories.tgz \
+        -H "X-Artifacts-Meta-git.branch.name: $QITS_CI_BRANCH" \
+        -H "X-Artifacts-Meta-git.commit.hash: $QITS_CI_SHA" \
+        -H "X-Artifacts-Meta-git.repository.name: qits-containers" \
+        "$QITS_DOCS_URL/@userflows/qits-containers/-/$QITS_CI_SHA")
+      case "$status" in
+        201) echo "published userflows for qits-containers@$QITS_CI_SHA ($QITS_CI_BRANCH)" ;;
+        409) echo "userflows for qits-containers@$QITS_CI_SHA are already published — skipping" ;;
+        *)   echo "docs publish failed: HTTP $status"; cat /tmp/docs-publish.out; exit 1 ;;
+      esac
+
+release:
+  - image: qits/build-images/maven-base:latest
+    timeout-seconds: 1800
+    script: |
+      # PUBLISH-IF-ABSENT: events redeliver and a maven deploy of an existing version is not
+      # idempotent, so both modules already being there is success and this step is done.
+      if curl -fsS -o /dev/null "$QITS_MAVEN_REGISTRY_URL/eu/wohlben/qits/qits-containers-core/$QITS_VERSION/qits-containers-core-$QITS_VERSION.pom" \
+        && curl -fsS -o /dev/null "$QITS_MAVEN_REGISTRY_URL/eu/wohlben/qits/qits-containers-client/$QITS_VERSION/qits-containers-client-$QITS_VERSION.pom"; then
+        echo "both modules @$QITS_VERSION are already published — skipping"
+        exit 0
+      fi
+      export QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL"
+      export QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}"
+      # `-pl .,core,client`: the root pom is deployed as the two modules' parent and is deliberately
+      # not a declared artifact. makeBom then runs `-pl core,client`.
+      ./mvnw -B -ntp -s .qits-maven-settings.xml -pl .,core,client deploy -DskipTests \
+        -Dqits.maven.repository.url="$QITS_MAVEN_REGISTRY_URL" \
+        -DaltDeploymentRepository="qits::default::$QITS_MAVEN_REGISTRY_URL"
+      ./mvnw -B -ntp -s .qits-maven-settings.xml -pl core,client -DskipTests \
+        org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeBom \
+        -DoutputFormat=json -DoutputName=sbom -DschemaVersion=1.6 \
+        -Dqits.maven.repository.url="$QITS_MAVEN_REGISTRY_URL"
+      # THE TWO JAR SBOMs, SUBMITTED FROM THE STEP THAT WROTE THEM. The composed postlude runs on
+      # the image step below and would find no such files there; this is the same CLI and the same
+      # policy, merely on the step that holds the document — the guard included, since the prelude
+      # puts the CLI on PATH only where the deployment configures it.
+      : "${QITS_ARTIFACTS_CLI_PACKAGE:?this release submits an SBOM, and the qits CLI is not configured on this deployment}"
+      qits artifacts publish sbom submit \
+        --type maven --name "eu.wohlben.qits:qits-containers-core" \
+        --version "$QITS_VERSION" --file core/target/sbom.json
+      qits artifacts publish sbom submit \
+        --type maven --name "eu.wohlben.qits:qits-containers-client" \
+        --version "$QITS_VERSION" --file client/target/sbom.json
+
+  - image: qits/build-images/ci-base:latest
+    build: true
+    timeout-seconds: 3600
+    script: |
+      declared=$(sed -n \
+        's/^[[:space:]]*-[[:space:]]*{[[:space:]]*type:[[:space:]]*docker[[:space:]]*,[[:space:]]*name:[[:space:]]*\([^,}[:space:]]*\).*/\1/p' \
+        .config/qits/release.yml)
+      image=${declared#*/}
+      ref="$QITS_BUILD_REGISTRY/$QITS_IMAGE_REPOSITORY/$image:$QITS_VERSION"
+      echo "releasing $ref"
+      buildctl build --frontend dockerfile.v0 \
+        --local context=. --local dockerfile=docker \
+        --opt build-arg:QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL" \
+        --opt build-arg:QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}" \
+        --secret id=qits-client-id,src=/tmp/qits-client-id \
+        --secret id=qits-client-secret,src=/tmp/qits-client-secret \
+        --output "type=image,name=$ref,push=true"
+      buildctl build --frontend dockerfile.v0 \
+        --local context=. --local dockerfile=docker \
+        --opt target=sbom \
+        --opt build-arg:QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL" \
+        --opt build-arg:QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}" \
+        --secret id=qits-client-id,src=/tmp/qits-client-id \
+        --secret id=qits-client-secret,src=/tmp/qits-client-secret \
+        --output type=local,dest=.sbom
