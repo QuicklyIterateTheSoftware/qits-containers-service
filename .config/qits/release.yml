@@ -40,7 +40,6 @@ release-request:
 
   - image: qits/build-images/maven-base:latest
     user: build
-    gating: false
     timeout-seconds: 2400
     script: |
       export QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL"

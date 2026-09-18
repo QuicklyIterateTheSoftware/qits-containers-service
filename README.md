@@ -323,10 +323,10 @@ with `--build-arg QITS_MAVEN_REPOSITORY_URL=…`, because the four platform jars
 only in the platform's own Maven repository and a docker build reaches no other address for them.
 
 **Neither pipeline can be one step**, because no build image carries both a JDK and the docker CLI:
-the suite runs on `maven-base`, the image build on `ci-base`. The QA pipeline adds a third,
-non-gating step for the userflow bundle. The release pipeline publishes **three** things —
-`qits-containers-core`, `qits-containers-client` and the image — which makes it the platform's first
-dual maven+docker release; `AGENTS.md` says what that costs.
+the suite runs on `maven-base`, the image build on `ci-base`. The QA pipeline adds a third step for
+the userflow bundle, which gates like the other two. The release pipeline publishes **three** things
+— `qits-containers-core`, `qits-containers-client` and the image — which makes it the platform's
+first dual maven+docker release; `AGENTS.md` says what that costs.
 
 `.config/qits/deployments.yml` is the deploy answer: **an environment service**, with
 `resources: postgresql:db, postgresql:eventstream:qits_containers_eventstream` and the health gate at

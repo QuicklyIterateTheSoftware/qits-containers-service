@@ -447,15 +447,18 @@ is worse than the gap.
   datasource opens and migrates, which is why the second `QITS_RESOURCE_*` triple is not optional.
 - **The ITs are opted in by NAME, not by `skipITs`.** The root pom keeps `skipITs=true`, because
   failsafe has one run per module and flipping it would turn `ContainersRestartAdoptionIT` back on
-  with it. Run them — and the last step of `.config/qits/ci-event-release-request.yml` runs them — as
+  with it. Run them — and the last step of the release-request phase of `.config/qits/release.yml`
+  runs them — as
 
       ./mvnw verify -DskipITs=false \
         -Dit.test=TokenValidationBootstrapIT,HostBootstrapIT,WorkloadLifecycleIT,OwnershipBoundaryIT,WorkloadReapIT,AccessRefusalIT
 
-  That step is **non-gating by design**: it carries `gating: false`, so a red story fails the run and
-  shows red without holding the release request's build gate. It is the only step in that pipeline
-  with no image build and no docker at all, and the only one that needs no `-Dquarkus.quinoa=false` —
-  this service is machine-facing and carries no client.
+  That step **gates, like every other step of the pipeline**: a red story is a red verdict for the
+  whole fold. It could not be otherwise — a run publishes ONE verdict, never one per step, so a
+  `gating: false` last step would have erased the earlier steps' pass and left the release request
+  parked on "Waiting for a gating CI verdict" that nobody would ever publish. It is the only step in
+  that pipeline with no image build and no docker at all, and the only one that needs no
+  `-Dquarkus.quinoa=false` — this service is machine-facing and carries no client.
 
 ## `ContainersPackagedSurfaceIT` is RED, and it was red before the catalogue
 
