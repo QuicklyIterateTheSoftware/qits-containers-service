@@ -6,14 +6,6 @@
 # trunk push alone. This repository publishes two library jars AND deploys, which is why it carries
 # both this file and a `type: maven` half in ci-event-release.yml.
 #
-# ENVIRONMENT service. Every consumer this exists for — qits-ci, qits-workspaces, qits-projects and
-# the daemons — is an env service, and the owner in every path here is the caller's machine-token
-# subject, which qits-idp mints per environment (`dev-qits-ci`, `prod-qits-ci`). That prefix is what
-# keeps two environments sharing one docker daemon out of each other's rows, so an env-scoped
-# orchestrator is the consistent shape. A green build deploys into whichever tier listens to the
-# built branch.
-deployment_target: environment
-
 # WHAT THIS REPOSITORY DEPLOYS AS, held still across the repository rename. The repository is
 # qits-containers-service now; the application is still qits-containers, so nothing that is running
 # moves: the swarm service and its wire alias, the container, the image qits/qits-containers the
