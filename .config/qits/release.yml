@@ -79,8 +79,16 @@ release:
     script: |
       # PUBLISH-IF-ABSENT: events redeliver and a maven deploy of an existing version is not
       # idempotent, so both modules already being there is success and this step is done.
-      if curl -fsS -o /dev/null "$QITS_MAVEN_REGISTRY_URL/eu/wohlben/qits/qits-containers-core/$QITS_VERSION/qits-containers-core-$QITS_VERSION.pom" \
-        && curl -fsS -o /dev/null "$QITS_MAVEN_REGISTRY_URL/eu/wohlben/qits/qits-containers-client/$QITS_VERSION/qits-containers-client-$QITS_VERSION.pom"; then
+      # ON THE EDGE PLANE THE REGISTRY ANSWERS AN ANONYMOUS READ 401 (qits-441), which this guard
+      # would read as "not published" and so re-deploy an occupied coordinate on a retry. There the
+      # run's token rides as the bearer — qits-ci sets $QITS_TOKEN on that plane alone — and
+      # in-network the read stays anonymous.
+      set --
+      if [ -n "${QITS_TOKEN:-}" ]; then
+        set -- -H "Authorization: Bearer $QITS_TOKEN"
+      fi
+      if curl -fsS "$@" -o /dev/null "$QITS_MAVEN_REGISTRY_URL/eu/wohlben/qits/qits-containers-core/$QITS_VERSION/qits-containers-core-$QITS_VERSION.pom" \
+        && curl -fsS "$@" -o /dev/null "$QITS_MAVEN_REGISTRY_URL/eu/wohlben/qits/qits-containers-client/$QITS_VERSION/qits-containers-client-$QITS_VERSION.pom"; then
         echo "both modules @$QITS_VERSION are already published — skipping"
         exit 0
       fi
