@@ -3,11 +3,16 @@
 The platform's container orchestrator: one service that starts, stops and remembers every container
 the platform runs for itself.
 
-Five modules shell out to the docker CLI today — qits-ci's pipeline steps, qits-workspaces'
-workspaces, qits-projects' refinement agents, and two more — each with its own registry, its own
-labels, and its own answer to what happens to a running container when the module restarts. This
-service is the one place that answers: **a durable row is written before the container is started, a
-restart adopts what is still running, and no code path removes a container that no row names.**
+Four modules shell out to the docker CLI today — qits-workspaces' workspaces, qits-projects'
+refinement agents, and two more — each with its own registry, its own labels, and its own answer to
+what happens to a running container when the module restarts. This service is the one place that
+answers: **a durable row is written before the container is started, a restart adopts what is still
+running, and no code path removes a container that no row names.**
+
+**qits-ci's pipeline steps are no longer a fifth.** They used to run through this service's `ci-step`
+workload; now `qits.ci.in-process-executor.enabled=false` (epic qits-443) and every step is started
+by a `qits-ci-runner` on its own host, with its own docker and its own buildkitd. qits-ci does not
+call this service for a step any more — not through the client, not through the docker CLI.
 
     ./mvnw verify                  # a clone alone, green — no monorepo, no docker, no credentials
     ./mvnw verify -DskipITs=false  # adds the packaged surface, and the real-docker adoption proof
@@ -46,11 +51,21 @@ Two things are deliberately outside it:
 `PlatformBuildkit` ensures a buildkitd container (`qits-buildkitd`, pinned
 `qits.containers.buildkit.image`, state volume `qits-buildkitd-state`) at boot — warned about,
 never failed on, claimed by no row — and hands its address to every workload that declared the
-docker socket as `BUILDKIT_HOST`, unless the caller sent the key itself (an empty caller value is
-qits-ci's kill switch and wins). It is not a workload this service decided to run for somebody; it
-is infrastructure of the build plane, exactly as the shared maven volume is infrastructure of the
-builds — and it exists so that "builds an image" stops implying "holds the host's docker socket".
-The wrapper's `qits-buildkit-plan.md` carries the whole migration.
+docker socket as `BUILDKIT_HOST`, unless the caller sent the key itself. It is not a workload this
+service decided to run for somebody; it is infrastructure of the build plane, exactly as the shared
+maven volume is infrastructure of the builds — and it exists so that "builds an image" stops
+implying "holds the host's docker socket". The wrapper's `qits-buildkit-plan.md` carries the whole
+migration.
+
+**The CI build plane is the runner's own buildkitd now, and this builder serves workspaces and
+project agents.** qits-ci used to spell "buildkit is switched off" as an empty caller-sent
+`BUILDKIT_HOST` — the one value `handOut` had to let win, empty included — on the `ci-step` workload
+it launched here. That kill switch is history: with `qits.ci.in-process-executor.enabled=false`
+(epic qits-443) qits-ci never launches a `ci-step` workload here to hand an address to, and a
+`qits-ci-runner`'s steps carry their own `buildkitd` on their own host, outside this service
+entirely. `handOut`'s caller-wins/empty-wins rule still stands — it is what a socket-holding
+workspace or refinement agent still relies on — but the one caller it was written to placate is
+gone.
 
 ## The registry, and what a restart does
 
@@ -114,6 +129,11 @@ The `{owner}` in the path must be the machine token's **subject, whole**: qits-i
 keeps two environments sharing one docker daemon out of each other's rows. Until the platform-wide
 gate `qits.auth.machine.required` is on — it ships off, as it does everywhere — the path owner is
 trusted and no bearer is needed.
+
+`dev-qits-ci`/`prod-qits-ci` is now a naming example rather than a live caller: the `ci-step`
+workload and that owner's rows are history, since qits-ci stopped calling here (see "The boundary").
+Nothing sweeps them out — the existing rows age out through `RowPrune` like any other owner's, on no
+schedule of their own.
 
 ## The client
 
