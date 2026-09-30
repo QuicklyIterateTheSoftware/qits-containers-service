@@ -1,7 +1,10 @@
 # qits-containers
 
 The platform's container orchestrator: one service that starts, stops and remembers every container
-the platform runs for itself.
+the platform runs for itself — **workspaces, project agent containers and refinements.** CI steps are
+not among them: every step runs on a `qits-ci-runner` host now, with its own docker and its own
+buildkitd, and never through this service (see "qits-ci's pipeline steps are no longer a fifth"
+below).
 
 Four modules shell out to the docker CLI today — qits-workspaces' workspaces, qits-projects'
 refinement agents, and two more — each with its own registry, its own labels, and its own answer to
@@ -57,15 +60,23 @@ maven volume is infrastructure of the builds — and it exists so that "builds a
 implying "holds the host's docker socket". The wrapper's `qits-buildkit-plan.md` carries the whole
 migration.
 
-**The CI build plane is the runner's own buildkitd now, and this builder serves workspaces and
-project agents.** qits-ci used to spell "buildkit is switched off" as an empty caller-sent
+**The CI build plane is the runner's own buildkitd now, and the only confirmed caller left is an
+admin workspace's socket.** qits-ci used to spell "buildkit is switched off" as an empty caller-sent
 `BUILDKIT_HOST` — the one value `handOut` had to let win, empty included — on the `ci-step` workload
 it launched here. That kill switch is history: with `qits.ci.in-process-executor.enabled=false`
 (epic qits-443) qits-ci never launches a `ci-step` workload here to hand an address to, and a
 `qits-ci-runner`'s steps carry their own `buildkitd` on their own host, outside this service
-entirely. `handOut`'s caller-wins/empty-wins rule still stands — it is what a socket-holding
-workspace or refinement agent still relies on — but the one caller it was written to placate is
-gone.
+entirely. `handOut`'s caller-wins/empty-wins rule still stands, and `PlatformBuildkit.handOut` still
+hands `BUILDKIT_HOST` to any workload whose spec sets `hostDockerSocket` — reading the code rather
+than assuming it: qits-workspaces' `WorkspaceContainerFactory` sets it for an **admin workspace**
+only (`container.hostDockerSocket(true)` guarded by `adminWorkspace(rowId)`,
+`WorkspaceContainerFactory.java:1059-1060`), and that is the one live caller today. qits-projects'
+`RefinementContainerFactory` and `AgentContainerFactory` do not set it — their own tests assert
+`hostDockerSocket()` is `false` on the spec they build
+(`RefinementContainerFactoryTest.java:79`, `AgentContainerFactoryTest.java:392`) — so a refinement or
+a project agent container never requests this builder. This paragraph used to say project agents and
+refinements relied on it too; that is not what the code does, and the builder stays in place pending
+a decision rather than because anything but an admin workspace still needs it.
 
 ## The registry, and what a restart does
 
