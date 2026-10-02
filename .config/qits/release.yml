@@ -10,13 +10,14 @@ userflows: qits-containers
 # does both. The QA half is three steps rather than two — a unit gate on `maven-base` as `build`
 # BEFORE the image builds, because a broken jar must not cost a native compile.
 #
-# THE TWO JARS ARE DECLARED WITHOUT `sbom:` ON PURPOSE. The composed postlude lands on ONE step —
-# the last declaring `build:`/`docker:`, which is the image step below — and steps share no working
-# directory: each is an ephemeral container with its own clone. `core/target/sbom.json` exists only
-# in the step that ran makeBom, so declaring it here would emit a submit for a file that is not
-# there and fail the release. The jar step submits its own two documents inline instead, with the
-# same CLI and the same policy the postlude uses. Only the image's SBOM, written in the step the
-# postlude runs on, is declared.
+# THE TWO JARS ARE DECLARED WITHOUT `sbom:` ON PURPOSE, and the maven step is the LAST release
+# step on purpose too: the postlude publishes a declared maven/npm entry from the jar the LAST
+# step leaves in target/, so the jar step runs after the image step. Steps share no working
+# directory — each is an ephemeral container with its own clone — so `core/target/sbom.json`
+# exists only in the step that ran makeBom, and declaring it on the entry would have the postlude
+# submit a path that is not there on the step it actually runs SBOM submission from. The jar step
+# submits its own two documents inline instead, with the same CLI and the same policy the postlude
+# uses. The image's SBOM is declared and submitted by the postlude from the image step, as before.
 release-request:
   - image: qits/build-images/maven-base:latest
     user: build
@@ -74,135 +75,6 @@ release-request:
       esac
 
 release:
-  - image: qits/build-images/maven-base:latest
-    timeout-seconds: 1800
-    script: |
-      # PUBLISH-IF-ABSENT: events redeliver and a maven deploy of an existing version is not
-      # idempotent, so both modules already being there is success and this step is done.
-      # ON THE EDGE PLANE THE REGISTRY ANSWERS AN ANONYMOUS READ 401 (qits-441), which this guard
-      # would read as "not published" and so re-deploy an occupied coordinate on a retry. There the
-      # run's token rides as the bearer — qits-ci sets $QITS_TOKEN on that plane alone — and
-      # in-network the read stays anonymous.
-      set --
-      if [ -n "${QITS_TOKEN:-}" ]; then
-        set -- -H "Authorization: Bearer $QITS_TOKEN"
-      fi
-      if curl -fsS "$@" -o /dev/null "$QITS_MAVEN_REGISTRY_URL/eu/wohlben/qits/qits-containers-core/$QITS_VERSION/qits-containers-core-$QITS_VERSION.pom" \
-        && curl -fsS "$@" -o /dev/null "$QITS_MAVEN_REGISTRY_URL/eu/wohlben/qits/qits-containers-client/$QITS_VERSION/qits-containers-client-$QITS_VERSION.pom"; then
-        echo "both modules @$QITS_VERSION are already published — skipping"
-        exit 0
-      fi
-      export QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL"
-      export QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}"
-      # `-pl .,core,client`: the root pom is deployed as the two modules' parent and is deliberately
-      # not a declared artifact. makeBom then runs `-pl core,client`.
-      # THE PUBLISH CREDENTIAL, AND IT IS AN HTTP HEADER RATHER THAN A USER/PASSWORD. The deployment
-      # repository id is `qits` — what -DaltDeploymentRepository names — and no settings file on this
-      # estate declares a <server> with that id. Maven does not authenticate preemptively either, so
-      # a <username>/<password> pair would never be sent; the credential has to arrive as an
-      # Authorization header, which is what the generated -gs settings below carry.
-      #
-      # MINTED HERE rather than read from the $QITS_PUBLISH_TOKEN qits-ci also injects: that one is
-      # minted when the container starts, and the mint's TTL and this step's timeout are the same
-      # number (3600s) with a whole build in between.
-      #
-      # THE HTTP BLOCKER IS RE-DECLARED because `-gs` REPLACES Maven's own conf/settings.xml, and
-      # `maven-default-http-blocker` is the only live element in it. Leaving it out would silently
-      # drop the blocker for the whole deploy — a loosening nobody asked for.
-      #
-      # THE FILE HOLDS A BEARER, so: `umask 077`, never `cat`ed, and removed after the deploy. Do
-      # not add `-X` to these commands for the same reason — Maven's debug log prints the effective
-      # settings, token and all. A minted token is base64url and dots, so nothing in it needs XML
-      # escaping.
-      #
-      # THE PATH IS THIS RECIPE'S OWN, AND THAT IS THE FIX FOR A LIVE FAILURE. qits-ci's container
-      # bootstrap (CiDaemonLauncher.BOOTSTRAP) writes /tmp/qits-deploy-settings.xml when the step
-      # container starts and APPENDS `-gs /tmp/qits-deploy-settings.xml` to MAVEN_ARGS, which every
-      # maven in the step then inherits. This step used to write that very path and then `rm -f` it
-      # after the deploy — deleting the platform's file — so the makeBom below started with
-      # MAVEN_ARGS still naming a file that was gone and died on:
-      #
-      #     The specified global settings file does not exist: /tmp/qits-deploy-settings.xml
-      #
-      # Every release on this recipe hit it. The collision goes away by writing somewhere the
-      # platform does not own.
-      #
-      # MAVEN_ARGS BEATS THE COMMAND LINE — measured on 3.9.12, and said so in CiDaemonLauncher — so
-      # on a current qits-ci this `-gs` is inert and the ambient file is what the deploy uses. It
-      # stays anyway: this file is read at main and runs against a tag on whatever qits-ci the
-      # estate is deployed with, and on one that injects nothing this is the deploy's only
-      # credential.
-      #
-      # AND IT DEGRADES TO ANONYMOUS — this script is read at main and runs against a tag on whatever
-      # qits-ci is deployed, so an absent command or a failed mint leaves the deploy byte-for-byte
-      # the one that worked yesterday rather than sending an empty bearer or aborting the step.
-      deploy_settings=""
-      deploy_token=""
-      if [ -n "${QITS_PUBLISH_TOKEN_COMMAND:-}" ] \
-        && command -v "$QITS_PUBLISH_TOKEN_COMMAND" >/dev/null 2>&1; then
-        deploy_token=$("$QITS_PUBLISH_TOKEN_COMMAND" 2>/dev/null) || deploy_token=""
-      fi
-      #
-      # `printf` AND NOT A HEREDOC, which is a YAML constraint rather than a shell preference: this
-      # script is a block scalar, its indentation is set by its first line, and a heredoc body has
-      # to sit at the emitted column zero — which is BELOW that indent and silently ends the
-      # scalar. Measured: the parser stops at `<settings` and the recipe no longer loads. Quoted
-      # printf arguments can be indented with the code around them.
-      if [ -n "$deploy_token" ]; then
-        ( umask 077
-          printf '%s\n' \
-            '<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0">' \
-            '  <servers>' \
-            '    <server>' \
-            '      <id>qits</id>' \
-            '      <configuration>' \
-            '        <httpHeaders>' \
-            '          <property>' \
-            '            <name>Authorization</name>' \
-            "            <value>Bearer $deploy_token</value>" \
-            '          </property>' \
-            '        </httpHeaders>' \
-            '      </configuration>' \
-            '    </server>' \
-            '  </servers>' \
-            '  <mirrors>' \
-            '    <mirror>' \
-            '      <id>maven-default-http-blocker</id>' \
-            '      <mirrorOf>external:http:*</mirrorOf>' \
-            '      <url>http://0.0.0.0/</url>' \
-            '      <blocked>true</blocked>' \
-            '    </mirror>' \
-            '  </mirrors>' \
-            '</settings>' > /tmp/qits-recipe-deploy-settings.xml )
-        deploy_settings="-gs /tmp/qits-recipe-deploy-settings.xml"
-      fi
-      ./mvnw -B -ntp -s .qits-maven-settings.xml $deploy_settings -pl .,core,client deploy -DskipTests \
-        -Dqits.maven.repository.url="$QITS_MAVEN_REGISTRY_URL" \
-        -DaltDeploymentRepository="qits::default::$QITS_MAVEN_REGISTRY_URL"
-      # The bearer stops existing the moment it stops being needed. Hygiene rather than a
-      # guarantee: a failed deploy aborts under the composer's `set -e` and leaves the file, and
-      # the step container is destroyed either way. The makeBom that follows publishes nothing.
-      #
-      # ONLY THIS RECIPE'S OWN FILE. The platform's /tmp/qits-deploy-settings.xml is named by an
-      # exported MAVEN_ARGS for the whole step, so removing it here removes the makeBom's own
-      # settings file out from under it — see the block above.
-      rm -f /tmp/qits-recipe-deploy-settings.xml
-      ./mvnw -B -ntp -s .qits-maven-settings.xml -pl core,client -DskipTests \
-        org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeBom \
-        -DoutputFormat=json -DoutputName=sbom -DschemaVersion=1.6 \
-        -Dqits.maven.repository.url="$QITS_MAVEN_REGISTRY_URL"
-      # THE TWO JAR SBOMs, SUBMITTED FROM THE STEP THAT WROTE THEM. The composed postlude runs on
-      # the image step below and would find no such files there; this is the same CLI and the same
-      # policy, merely on the step that holds the document — the guard included, since the prelude
-      # puts the CLI on PATH only where the deployment configures it.
-      : "${QITS_ARTIFACTS_CLI_PACKAGE:?this release submits an SBOM, and the qits CLI is not configured on this deployment}"
-      qits artifacts publish sbom submit \
-        --type maven --name "eu.wohlben.qits:qits-containers-core" \
-        --version "$QITS_VERSION" --file core/target/sbom.json
-      qits artifacts publish sbom submit \
-        --type maven --name "eu.wohlben.qits:qits-containers-client" \
-        --version "$QITS_VERSION" --file client/target/sbom.json
-
   - image: qits/build-images/ci-base:latest
     build: true
     timeout-seconds: 3600
@@ -228,3 +100,29 @@ release:
         --secret id=qits-client-id,src=/tmp/qits-client-id \
         --secret id=qits-client-secret,src=/tmp/qits-client-secret \
         --output type=local,dest=.sbom
+
+  - image: qits/build-images/maven-base:latest
+    timeout-seconds: 1800
+    script: |
+      # NO LONGER A DEPLOY: the CLI publishes these two coordinates from the postlude, off the
+      # jars this step leaves in target/. This step only has to build them, and it moves after
+      # the image step so it is the LAST release step, which is where the postlude publishes from.
+      export QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL"
+      export QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}"
+      ./mvnw -B -ntp -s .qits-maven-settings.xml -pl core,client -am package -DskipTests \
+        -Dqits.maven.repository.url="$QITS_MAVEN_REGISTRY_URL"
+      ./mvnw -B -ntp -s .qits-maven-settings.xml -pl core,client -DskipTests \
+        org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeBom \
+        -DoutputFormat=json -DoutputName=sbom -DschemaVersion=1.6 \
+        -Dqits.maven.repository.url="$QITS_MAVEN_REGISTRY_URL"
+      # THE TWO JAR SBOMs, SUBMITTED FROM THE STEP THAT WROTE THEM. The composed postlude's own
+      # sbom submit covers only a declared `sbom:` on the step it runs on; this is the same CLI and
+      # the same policy, merely on the step that holds the document.
+      : "${QITS_ARTIFACTS_CLI_PACKAGE:?this release submits an SBOM, and the qits CLI is not configured on this deployment}"
+      qits artifacts publish sbom submit \
+        --type maven --name "eu.wohlben.qits:qits-containers-core" \
+        --version "$QITS_VERSION" --file core/target/sbom.json
+      qits artifacts publish sbom submit \
+        --type maven --name "eu.wohlben.qits:qits-containers-client" \
+        --version "$QITS_VERSION" --file client/target/sbom.json
+
