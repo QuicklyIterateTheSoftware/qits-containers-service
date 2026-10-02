@@ -1,7 +1,7 @@
 archetype: java-service
 artifacts:
-  - { type: maven, name: "eu.wohlben.qits:qits-containers-core", path: core }
-  - { type: maven, name: "eu.wohlben.qits:qits-containers-client", path: client }
+  - { type: maven, name: "eu.wohlben.qits:qits-containers-core", path: core, sbom: core/target/sbom.json }
+  - { type: maven, name: "eu.wohlben.qits:qits-containers-client", path: client, sbom: client/target/sbom.json }
   - { type: docker, name: qits/qits-containers, sbom: .sbom/sbom.json }
 userflows: qits-containers
 
@@ -10,14 +10,10 @@ userflows: qits-containers
 # does both. The QA half is three steps rather than two — a unit gate on `maven-base` as `build`
 # BEFORE the image builds, because a broken jar must not cost a native compile.
 #
-# THE TWO JARS ARE DECLARED WITHOUT `sbom:` ON PURPOSE, and the maven step is the LAST release
-# step on purpose too: the postlude publishes a declared maven/npm entry from the jar the LAST
-# step leaves in target/, so the jar step runs after the image step. Steps share no working
-# directory — each is an ephemeral container with its own clone — so `core/target/sbom.json`
-# exists only in the step that ran makeBom, and declaring it on the entry would have the postlude
-# submit a path that is not there on the step it actually runs SBOM submission from. The jar step
-# submits its own two documents inline instead, with the same CLI and the same policy the postlude
-# uses. The image's SBOM is declared and submitted by the postlude from the image step, as before.
+# THE MAVEN STEP IS THE LAST RELEASE STEP ON PURPOSE: qits-ci submits each declared `sbom:` from
+# whichever release step holds the file, so the jar step runs after the image step and makeBom
+# writes `core/target/sbom.json` and `client/target/sbom.json` there for the postlude to submit.
+# The image's SBOM is declared and submitted by the postlude from the image step, as before.
 release-request:
   - image: qits/build-images/maven-base:latest
     user: build
@@ -115,14 +111,4 @@ release:
         org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeBom \
         -DoutputFormat=json -DoutputName=sbom -DschemaVersion=1.6 \
         -Dqits.maven.repository.url="$QITS_MAVEN_REGISTRY_URL"
-      # THE TWO JAR SBOMs, SUBMITTED FROM THE STEP THAT WROTE THEM. The composed postlude's own
-      # sbom submit covers only a declared `sbom:` on the step it runs on; this is the same CLI and
-      # the same policy, merely on the step that holds the document.
-      : "${QITS_ARTIFACTS_CLI_PACKAGE:?this release submits an SBOM, and the qits CLI is not configured on this deployment}"
-      qits artifacts publish sbom submit \
-        --type maven --name "eu.wohlben.qits:qits-containers-core" \
-        --version "$QITS_VERSION" --file core/target/sbom.json
-      qits artifacts publish sbom submit \
-        --type maven --name "eu.wohlben.qits:qits-containers-client" \
-        --version "$QITS_VERSION" --file client/target/sbom.json
 
