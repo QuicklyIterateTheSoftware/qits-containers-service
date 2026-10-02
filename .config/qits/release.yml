@@ -1,7 +1,7 @@
 archetype: java-service
 artifacts:
-  - { type: maven, name: "eu.wohlben.qits:qits-containers-core" }
-  - { type: maven, name: "eu.wohlben.qits:qits-containers-client" }
+  - { type: maven, name: "eu.wohlben.qits:qits-containers-core", path: core }
+  - { type: maven, name: "eu.wohlben.qits:qits-containers-client", path: client }
   - { type: docker, name: qits/qits-containers, sbom: .sbom/sbom.json }
 userflows: qits-containers
 
