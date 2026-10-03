@@ -85,6 +85,13 @@ public class BootSweep {
   public static final int SHARED_RESOURCES_PRIORITY = 2400;
 
   /**
+   * Before anything that can pull: {@code DockerCredentials} writes this service's own docker
+   * {@code config.json}, and the shared-resources pass and the platform builder are the first
+   * docker calls that might need it.
+   */
+  public static final int DOCKER_CREDENTIALS_PRIORITY = 2350;
+
+  /**
    * Between the shared resources and the sweep: the platform builder needs the network answer the
    * shared-resources pass just warned about, and nothing about the sweep or the observer should
    * wait on an image pull.

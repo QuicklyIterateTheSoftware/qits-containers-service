@@ -8,6 +8,7 @@ import eu.wohlben.qits.containers.control.ContainersDriver.VolumeDetail;
 import eu.wohlben.qits.containers.control.ContainersTimeouts;
 import eu.wohlben.qits.containers.docker.ContainerProcess;
 import eu.wohlben.qits.containers.docker.DockerArgv;
+import eu.wohlben.qits.containers.docker.DockerConfigFile;
 import eu.wohlben.qits.containers.spec.ContainerSpec;
 import eu.wohlben.qits.containers.spec.LifecyclePolicy;
 import eu.wohlben.qits.containers.spec.VolumeSpec;
@@ -96,6 +97,10 @@ public class DockerContainersDriver implements ContainersDriver {
    */
   @Inject DockerSocketGroup socketGroup;
 
+  /** Where {@link DockerCredentials} writes this service's own {@code config.json}. */
+  @ConfigProperty(name = "qits.containers.docker-config.dir")
+  String dockerConfigDir;
+
   @Override
   public Started run(
       ContainerSpec spec,
@@ -104,8 +109,7 @@ public class DockerContainersDriver implements ContainersDriver {
       LifecyclePolicy policy,
       Duration timeout) {
     ContainerProcess.Result result =
-        ContainerProcess.run(
-            null,
+        docker(
             DockerArgv.run(runtime, name, spec, labels, policy, socketGroup.value()),
             timeout,
             ContainersTimeouts.RUN_MAX_CHARS);
@@ -131,8 +135,7 @@ public class DockerContainersDriver implements ContainersDriver {
       int oomScoreAdj,
       Duration timeout) {
     ContainerProcess.Result result =
-        ContainerProcess.run(
-            null,
+        docker(
             DockerArgv.runBuildkitd(
                 runtime, image, network, stateVolume, toml, configStamp, cpus, memory, pidsLimit,
                 oomScoreAdj),
@@ -149,8 +152,7 @@ public class DockerContainersDriver implements ContainersDriver {
   @Override
   public Optional<String> buildkitdStamp(String name, Duration timeout) {
     ContainerProcess.Result result =
-        ContainerProcess.run(
-            null,
+        docker(
             DockerArgv.inspectBuildkitdStamp(runtime, name),
             timeout,
             ContainersTimeouts.SHORT_MAX_CHARS);
@@ -173,8 +175,7 @@ public class DockerContainersDriver implements ContainersDriver {
   @Override
   public Optional<Observed> inspect(String name, Duration timeout) {
     ContainerProcess.Result result =
-        ContainerProcess.run(
-            null,
+        docker(
             DockerArgv.inspectObservation(runtime, name),
             timeout,
             ContainersTimeouts.SHORT_MAX_CHARS);
@@ -266,7 +267,7 @@ public class DockerContainersDriver implements ContainersDriver {
   @Override
   public LogTail logsTail(String name, int lines, Duration timeout, int maxChars) {
     ContainerProcess.Result result =
-        ContainerProcess.run(null, DockerArgv.logsTail(runtime, name, lines), timeout, maxChars);
+        docker(DockerArgv.logsTail(runtime, name, lines), timeout, maxChars);
     if (!succeeded(result)) {
       LOG.debugf("Could not read the logs of %s: %s", name, brief(result.output()));
     }
@@ -302,7 +303,7 @@ public class DockerContainersDriver implements ContainersDriver {
   @Override
   public OpResult pull(String imageRef, Duration timeout, int maxChars) {
     ContainerProcess.Result result =
-        ContainerProcess.run(null, DockerArgv.pull(runtime, imageRef), timeout, maxChars);
+        docker(DockerArgv.pull(runtime, imageRef), timeout, maxChars);
     if (succeeded(result)) {
       return new OpResult(true, null);
     }
@@ -318,8 +319,7 @@ public class DockerContainersDriver implements ContainersDriver {
   @Override
   public boolean networkPresent(String network, Duration timeout) {
     ContainerProcess.Result result =
-        ContainerProcess.run(
-            null,
+        docker(
             DockerArgv.networkInspect(runtime, network),
             timeout,
             ContainersTimeouts.SHORT_MAX_CHARS);
@@ -355,8 +355,8 @@ public class DockerContainersDriver implements ContainersDriver {
   @Override
   public DiskUsage diskUsage(Duration timeout) {
     ContainerProcess.Result result =
-        ContainerProcess.run(
-            null, DockerArgv.systemDf(runtime), timeout, ContainersTimeouts.SHORT_MAX_CHARS);
+        docker(
+            DockerArgv.systemDf(runtime), timeout, ContainersTimeouts.SHORT_MAX_CHARS);
     if (!whole(result)) {
       LOG.warnf("Could not read the host's disk usage: %s", brief(result.output()));
       throw new IllegalStateException(
@@ -368,8 +368,8 @@ public class DockerContainersDriver implements ContainersDriver {
   @Override
   public List<ImageSummary> listImages(Duration timeout) {
     ContainerProcess.Result result =
-        ContainerProcess.run(
-            null, DockerArgv.imageLs(runtime), timeout, ContainersTimeouts.LISTING_MAX_CHARS);
+        docker(
+            DockerArgv.imageLs(runtime), timeout, ContainersTimeouts.LISTING_MAX_CHARS);
     if (!whole(result)) {
       LOG.warnf(
           "Could not read the image listing, so it is read as empty: %s", brief(result.output()));
@@ -386,8 +386,7 @@ public class DockerContainersDriver implements ContainersDriver {
   @Override
   public List<String> listImageReferencesInUse(Duration timeout) {
     ContainerProcess.Result result =
-        ContainerProcess.run(
-            null,
+        docker(
             DockerArgv.psImageReferences(runtime),
             timeout,
             ContainersTimeouts.LISTING_MAX_CHARS);
@@ -424,8 +423,7 @@ public class DockerContainersDriver implements ContainersDriver {
   @Override
   public Optional<VolumeDetail> inspectVolume(String name, Duration timeout) {
     ContainerProcess.Result result =
-        ContainerProcess.run(
-            null,
+        docker(
             DockerArgv.volumeInspectDetail(runtime, name),
             timeout,
             ContainersTimeouts.SHORT_MAX_CHARS);
@@ -444,8 +442,7 @@ public class DockerContainersDriver implements ContainersDriver {
   @Override
   public List<String> listContainersUsingVolume(String volumeName, Duration timeout) {
     ContainerProcess.Result result =
-        ContainerProcess.run(
-            null,
+        docker(
             DockerArgv.psByVolume(runtime, volumeName),
             timeout,
             ContainersTimeouts.LISTING_MAX_CHARS);
@@ -537,7 +534,7 @@ public class DockerContainersDriver implements ContainersDriver {
       Duration timeout,
       boolean pruning) {
     ContainerProcess.Result result =
-        ContainerProcess.run(null, argv, env, timeout, ContainersTimeouts.PRUNE_MAX_CHARS);
+        docker(argv, env, timeout, ContainersTimeouts.PRUNE_MAX_CHARS);
     if (!succeeded(result)) {
       LOG.warnf("Could not %s: %s", what, brief(result.output()));
       return new CacheResult(false, 0, result.output());
@@ -561,10 +558,27 @@ public class DockerContainersDriver implements ContainersDriver {
 
   // --- the shapes every call above is one of ------------------------------------------------
 
+  /**
+   * <b>Every docker child this service spawns goes through here</b>, so the credential decision is
+   * made once: {@code DOCKER_CONFIG} points at this service's own {@code config.json}
+   * ({@link DockerCredentials}) when that file exists, and the deployment's environment is left
+   * exactly as it is otherwise — which is what keeps a rollback onto the spec mounting
+   * {@code /work/config} pulling (qits-879).
+   */
+  private ContainerProcess.Result docker(List<String> argv, Duration timeout, int maxChars) {
+    return docker(argv, Map.of(), timeout, maxChars);
+  }
+
+  private ContainerProcess.Result docker(
+      List<String> argv, Map<String, String> env, Duration timeout, int maxChars) {
+    return ContainerProcess.run(
+        null, argv, DockerConfigFile.environment(env, Path.of(dockerConfigDir)), timeout, maxChars);
+  }
+
   /** A call whose whole answer is "did it work". */
   private OpResult op(String what, List<String> argv, Duration timeout) {
     ContainerProcess.Result result =
-        ContainerProcess.run(null, argv, timeout, ContainersTimeouts.SHORT_MAX_CHARS);
+        docker(argv, timeout, ContainersTimeouts.SHORT_MAX_CHARS);
     if (succeeded(result)) {
       return new OpResult(true, null);
     }
@@ -575,7 +589,7 @@ public class DockerContainersDriver implements ContainersDriver {
   /** A listing. Degrades to nothing with a warning — see the class javadoc. */
   private List<String> lines(String what, List<String> argv, Duration timeout) {
     ContainerProcess.Result result =
-        ContainerProcess.run(null, argv, timeout, ContainersTimeouts.SHORT_MAX_CHARS);
+        docker(argv, timeout, ContainersTimeouts.SHORT_MAX_CHARS);
     if (!succeeded(result)) {
       LOG.warnf("Could not read %s, so it is read as empty: %s", what, brief(result.output()));
       return List.of();

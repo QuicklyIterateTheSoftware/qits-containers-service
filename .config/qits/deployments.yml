@@ -37,7 +37,17 @@ application: qits-containers
 #
 # It NAMES its database, and has to: the default is derived from the application, so both entries
 # would otherwise have asked for qits_containers and the parser refuses that after resolution.
-resources: postgresql:db, postgresql:eventstream:qits_containers_eventstream
+#
+# idp:client ASKS QITS-DEPLOYMENTS TO PROVISION THIS APPLICATION'S OWN QITS-IDP SERVICE CLIENT — id
+# `dev-qits-containers` (derived from env + application). The deployer stores the secret the way it
+# stores a database password, and injects QITS_RESOURCE_IDP_URL, QITS_RESOURCE_IDP_CLIENT_ID and
+# QITS_RESOURCE_IDP_CLIENT_SECRET. It is for IMAGE PULLS: at start DockerCredentials writes them as
+# the docker CLI's config.json under /tmp/qits-docker and every docker child is pointed there, which
+# retires the bootstrap-era Basic secret in the /work/config volume's config.json — qits-878 collects
+# that old client. The mounted volume stays readable for a rollback onto the previous spec.
+#
+# Ticket qits-879.
+resources: postgresql:db, postgresql:eventstream:qits_containers_eventstream, idp:client
 
 # THE PROBE THE DEPLOY GATES ON. It is the derived default — /containers/q/health/ready, the
 # repository name minus `qits-` — and it is spelled out anyway, so a future change to
