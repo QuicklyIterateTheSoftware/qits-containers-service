@@ -60,6 +60,25 @@ public class DockerCredentialsTest {
   }
 
   @Test
+  public void aDriverWithNoDirConfiguredSpawnsWithTheInheritedEnvironment(@TempDir Path tmp)
+      throws Exception {
+    // A driver built by hand (DockerBuildCacheCallTest's shape) never set the dir: that is "no
+    // DOCKER_CONFIG", never a NullPointerException on every docker call.
+    Path script = tmp.resolve("fake-docker");
+    Files.writeString(script, "#!/bin/sh\necho \"cfg=${DOCKER_CONFIG:-unset}\"\n");
+    script.toFile().setExecutable(true);
+    DockerContainersDriver driver = new DockerContainersDriver();
+    driver.runtime = script.toString();
+
+    String inherited = Optional.ofNullable(System.getenv("DOCKER_CONFIG")).orElse("unset");
+    assertEquals(
+        List.of("cfg=" + inherited), driver.listBuildxBuilders(Duration.ofSeconds(30)));
+    driver.dockerConfigDir = " ";
+    assertEquals(
+        List.of("cfg=" + inherited), driver.listBuildxBuilders(Duration.ofSeconds(30)));
+  }
+
+  @Test
   public void aDockerChildIsPointedAtTheFileOnlyWhileItExists(@TempDir Path tmp) throws Exception {
     Path script = tmp.resolve("fake-docker");
     Files.writeString(script, "#!/bin/sh\necho \"cfg=${DOCKER_CONFIG:-unset}\"\n");

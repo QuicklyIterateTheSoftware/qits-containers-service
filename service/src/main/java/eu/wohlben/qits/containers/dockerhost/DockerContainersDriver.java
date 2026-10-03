@@ -571,8 +571,11 @@ public class DockerContainersDriver implements ContainersDriver {
 
   private ContainerProcess.Result docker(
       List<String> argv, Map<String, String> env, Duration timeout, int maxChars) {
+    // An unset dir — a driver built by hand, a config that names none — means no DOCKER_CONFIG.
+    Path dir =
+        dockerConfigDir == null || dockerConfigDir.isBlank() ? null : Path.of(dockerConfigDir);
     return ContainerProcess.run(
-        null, argv, DockerConfigFile.environment(env, Path.of(dockerConfigDir)), timeout, maxChars);
+        null, argv, DockerConfigFile.environment(env, dir), timeout, maxChars);
   }
 
   /** A call whose whole answer is "did it work". */
