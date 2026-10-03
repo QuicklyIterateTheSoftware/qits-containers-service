@@ -349,9 +349,10 @@ Nothing builds on a push any more. **Releasing is opening a release request** �
 verdict is what lets qits-projects stamp the CalVer, tag, and publish `SCMRelease`. Only then does
 `.config/qits/ci-event-release.yml` build `docker/Dockerfile` — a Mandrel builder stage that
 native-compiles `service`, a `ubi-minimal` runtime stage that carries the binary **and the docker
-CLI** — and push it as `qits/qits-containers:<version>`. Both files' builds run `--network host`
-with `--build-arg QITS_MAVEN_REPOSITORY_URL=…`, because the four platform jars this repo takes exist
-only in the platform's own Maven repository and a docker build reaches no other address for them.
+CLI** — and push it as `qits/qits-containers:<version>`. Both files' builds pass
+`--build-arg QITS_DOMAIN=…`, because the four platform jars this repo takes exist only on the
+platform's own Maven repository, `https://registry.qits.$QITS_DOMAIN/artifacts/maven/maven`, which
+answers 401 without the commissioned client the same builds pass as a secret.
 
 **Neither pipeline can be one step**, because no build image carries both a JDK and the docker CLI:
 the suite runs on `maven-base`, the image build on `ci-base`. The QA pipeline adds a third step for

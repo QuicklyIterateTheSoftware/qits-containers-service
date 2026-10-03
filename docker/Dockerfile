@@ -8,18 +8,15 @@
 # around it — and a way for a machine with no GraalVM (a CI runner, a laptop on a plain OpenJDK) to
 # get a binary at all, since the builder stage brings its own native-image.
 #
-# Build from the repo root, on the network where the platform's Maven repository answers:
+# Build from the repo root:
 #
-#     docker build --network host \
-#       --build-arg QITS_MAVEN_REPOSITORY_URL="http://$QITS_REGISTRY/artifacts/maven/maven" \
-#       -t qits/containers:latest -f docker/Dockerfile .
+#     docker build -t qits/containers:latest -f docker/Dockerfile .
 #
-# BOTH FLAGS ARE REQUIRED and neither has a workable default. This reactor depends on
+# THE CREDENTIAL IS STILL REQUIRED, even with QITS_DOMAIN defaulted. This reactor depends on
 # `qits-db-core`, `qits-arch-rules`, `qits-eventstream` and `qits-auth-core`, jars published to the
 # platform's own Maven repository and available from nowhere else — not Maven Central, and not the
-# builder container's empty ~/.m2. A RUN step reaches the public internet and nothing else, so
-# without `--network` there is no address that answers at all. See .config/qits/ci-post-receive.yml,
-# which passes exactly this pair.
+# builder container's empty ~/.m2 — and both hosts answer 401 anonymously. See
+# .config/qits/release.yml, which passes the two secrets.
 #
 # There is no client to build first and no npm anywhere: this service is machine-facing and serves
 # no page. That is the one way this file is shorter than qits-githost's.
@@ -107,16 +104,16 @@ COPY . .
 # `-s .qits-maven-settings.xml` is what lets the `qits-maven` repository be an http:// URL at all:
 # Maven blocks external http repositories by default, and an exact repository-id mirror is the one
 # thing that outranks the blocker. The settings file permits that one id and nothing else.
-ARG QITS_MAVEN_REPOSITORY_URL=http://registry.dev.localhost:8080/artifacts/maven/maven
-ENV QITS_MAVEN_REPOSITORY_URL=$QITS_MAVEN_REPOSITORY_URL
 #
-# --- and where Maven Central is mirrored, when it is ----------------------------------------------
-# The pipeline passes the platform's pull-through (qits-platform-mirror's central proxy, the same
-# authority the FROM lines above pull through); EMPTY — the default — means direct Maven Central.
-# `.qits-maven-settings.xml` activates its central-proxy profile only on a non-empty value, so a
-# bootstrap or hand build that passes nothing resolves exactly as it always did.
-ARG QITS_MAVEN_CENTRAL_URL=
-ENV QITS_MAVEN_CENTRAL_URL=$QITS_MAVEN_CENTRAL_URL
+# Both platform hosts are code plus one input, the public domain:
+#
+#   https://registry.qits.$QITS_DOMAIN/artifacts/maven/maven   hosted Maven (qits-artifacts)
+#   https://mirror.qits.$QITS_DOMAIN/mirror/maven/central      Maven Central cache (qits-mirror)
+#
+# The RUN below derives both and exports them for that RUN alone; `.qits-maven-settings.xml` reads
+# them as ${env.…}, mirroring the `qits-maven` repository id onto the first and Central onto the
+# second. The CI recipe passes QITS_DOMAIN; the default is the live platform's.
+ARG QITS_DOMAIN=wohlben.eu
 #
 # The same settings file also carries the CREDENTIAL, and the two secret mounts below are where it
 # comes from: they put the CI run's commissioned client into THIS `RUN`'s environment and nowhere
@@ -125,13 +122,15 @@ ENV QITS_MAVEN_CENTRAL_URL=$QITS_MAVEN_CENTRAL_URL
 # `env=` mount form: env= needs a dockerfile frontend the builder chooses, while the bare file
 # mount is served identically by every frontend version — and under the platform builder the
 # frontend is the builder's, not this file's, to pick. Absent secrets leave both variables empty
-# (`|| true` is every hand build's state) and the four jars resolve anonymously — today's state,
-# and a developer host's permanently, because Maven sends credentials only when a repository
-# answers 401 and the registry does not yet.
+# (`|| true` is every hand build's state), so a hand build without them still starts and fails at
+# the first 401 with Maven naming the host. Pass your own client to build by hand: `--secret
+# id=qits-client-id,env=… --secret id=qits-client-secret,env=…`.
 RUN --mount=type=secret,id=qits-client-id \
     --mount=type=secret,id=qits-client-secret \
     QITS_MAVEN_AUTH_USR="$(cat /run/secrets/qits-client-id 2>/dev/null || true)" \
     QITS_MAVEN_AUTH_PSW="$(cat /run/secrets/qits-client-secret 2>/dev/null || true)" \
+    QITS_MAVEN_REPOSITORY_URL="https://registry.qits.$QITS_DOMAIN/artifacts/maven/maven" \
+    QITS_MAVEN_CENTRAL_URL="https://mirror.qits.$QITS_DOMAIN/mirror/maven/central" \
     ./mvnw -B -ntp -s .qits-maven-settings.xml -pl service -am package -Dnative -DskipTests \
       -Dqits.maven.repository.url="$QITS_MAVEN_REPOSITORY_URL" \
       -Dquarkus.native.native-image-xmx=4g \

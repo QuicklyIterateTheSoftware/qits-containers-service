@@ -19,8 +19,11 @@ release-request:
     user: build
     timeout-seconds: 1800
     script: |
-      export QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL"
-      export QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}"
+      # Both addresses are code under the platform's public domain (qits-731); `wohlben.eu` covers a
+      # qits-ci too old to inject $QITS_DOMAIN.
+      qits_domain=${QITS_DOMAIN:-wohlben.eu}
+      export QITS_MAVEN_REPOSITORY_URL="https://registry.qits.$qits_domain/artifacts/maven/maven"
+      export QITS_MAVEN_CENTRAL_URL="https://mirror.qits.$qits_domain/mirror/maven/central"
       ./mvnw -B -ntp -s .qits-maven-settings.xml verify \
         -Dqits.maven.repository.url="$QITS_MAVEN_REPOSITORY_URL"
 
@@ -28,10 +31,16 @@ release-request:
     build: true
     timeout-seconds: 3600
     script: |
+      # THE ADDRESSES ARE CODE (qits-731): the platform's public domain is the one input, and every
+      # host and path below is a constant under it. `wohlben.eu` covers a qits-ci too old to inject
+      # $QITS_DOMAIN. `QITS_DOMAIN` rides beside the two maven urls, which stay for the Dockerfile
+      # until it declares that ARG alone.
+      qits_domain=${QITS_DOMAIN:-wohlben.eu}
       buildctl build --frontend dockerfile.v0 \
         --local context=. --local dockerfile=docker \
-        --opt build-arg:QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL" \
-        --opt build-arg:QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}" \
+        --opt build-arg:QITS_DOMAIN="$qits_domain" \
+        --opt build-arg:QITS_MAVEN_REPOSITORY_URL="https://registry.qits.$qits_domain/artifacts/maven/maven" \
+        --opt build-arg:QITS_MAVEN_CENTRAL_URL="https://mirror.qits.$qits_domain/mirror/maven/central" \
         --secret id=qits-client-id,src=/tmp/qits-client-id \
         --secret id=qits-client-secret,src=/tmp/qits-client-secret
 
@@ -39,8 +48,9 @@ release-request:
     user: build
     timeout-seconds: 2400
     script: |
-      export QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL"
-      export QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}"
+      qits_domain=${QITS_DOMAIN:-wohlben.eu}
+      export QITS_MAVEN_REPOSITORY_URL="https://registry.qits.$qits_domain/artifacts/maven/maven"
+      export QITS_MAVEN_CENTRAL_URL="https://mirror.qits.$qits_domain/mirror/maven/central"
       ./mvnw -B -ntp -s .qits-maven-settings.xml verify \
         -Dqits.maven.repository.url="$QITS_MAVEN_REPOSITORY_URL" \
         -DskipITs=false \
@@ -63,7 +73,7 @@ release-request:
         -H "X-Artifacts-Meta-git.branch.name: $QITS_CI_BRANCH" \
         -H "X-Artifacts-Meta-git.commit.hash: $QITS_CI_SHA" \
         -H "X-Artifacts-Meta-git.repository.name: qits-containers" \
-        "$QITS_DOCS_URL/@userflows/qits-containers/-/$QITS_CI_SHA")
+        "https://registry.qits.$qits_domain/artifacts/docs/docs/@userflows/qits-containers/-/$QITS_CI_SHA")
       case "$status" in
         201) echo "published userflows for qits-containers@$QITS_CI_SHA ($QITS_CI_BRANCH)" ;;
         409) echo "userflows for qits-containers@$QITS_CI_SHA are already published — skipping" ;;
@@ -79,20 +89,26 @@ release:
         's/^[[:space:]]*-[[:space:]]*{[[:space:]]*type:[[:space:]]*docker[[:space:]]*,[[:space:]]*name:[[:space:]]*\([^,}[:space:]]*\).*/\1/p' \
         .config/qits/release.yml)
       image=${declared#*/}
-      ref="$QITS_BUILD_REGISTRY/$QITS_IMAGE_REPOSITORY/$image:$QITS_VERSION"
+      # THE ADDRESSES ARE CODE (qits-731): the platform's public domain is the one input, and every
+      # host and path below is a constant under it. `wohlben.eu` covers a qits-ci too old to inject
+      # $QITS_DOMAIN.
+      qits_domain=${QITS_DOMAIN:-wohlben.eu}
+      ref="registry.qits.$qits_domain/$QITS_IMAGE_REPOSITORY/$image:$QITS_VERSION"
       echo "releasing $ref"
       buildctl build --frontend dockerfile.v0 \
         --local context=. --local dockerfile=docker \
-        --opt build-arg:QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL" \
-        --opt build-arg:QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}" \
+        --opt build-arg:QITS_DOMAIN="$qits_domain" \
+        --opt build-arg:QITS_MAVEN_REPOSITORY_URL="https://registry.qits.$qits_domain/artifacts/maven/maven" \
+        --opt build-arg:QITS_MAVEN_CENTRAL_URL="https://mirror.qits.$qits_domain/mirror/maven/central" \
         --secret id=qits-client-id,src=/tmp/qits-client-id \
         --secret id=qits-client-secret,src=/tmp/qits-client-secret \
         --output "type=image,name=$ref,push=true"
       buildctl build --frontend dockerfile.v0 \
         --local context=. --local dockerfile=docker \
         --opt target=sbom \
-        --opt build-arg:QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL" \
-        --opt build-arg:QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}" \
+        --opt build-arg:QITS_DOMAIN="$qits_domain" \
+        --opt build-arg:QITS_MAVEN_REPOSITORY_URL="https://registry.qits.$qits_domain/artifacts/maven/maven" \
+        --opt build-arg:QITS_MAVEN_CENTRAL_URL="https://mirror.qits.$qits_domain/mirror/maven/central" \
         --secret id=qits-client-id,src=/tmp/qits-client-id \
         --secret id=qits-client-secret,src=/tmp/qits-client-secret \
         --output type=local,dest=.sbom
@@ -103,12 +119,13 @@ release:
       # NO LONGER A DEPLOY: the CLI publishes these two coordinates from the postlude, off the
       # jars this step leaves in target/. This step only has to build them, and it moves after
       # the image step so it is the LAST release step, which is where the postlude publishes from.
-      export QITS_MAVEN_REPOSITORY_URL="$QITS_MAVEN_REGISTRY_URL"
-      export QITS_MAVEN_CENTRAL_URL="${QITS_MAVEN_PROXY_URL:-}"
+      qits_domain=${QITS_DOMAIN:-wohlben.eu}
+      export QITS_MAVEN_REPOSITORY_URL="https://registry.qits.$qits_domain/artifacts/maven/maven"
+      export QITS_MAVEN_CENTRAL_URL="https://mirror.qits.$qits_domain/mirror/maven/central"
       ./mvnw -B -ntp -s .qits-maven-settings.xml -pl core,client -am package -DskipTests \
-        -Dqits.maven.repository.url="$QITS_MAVEN_REGISTRY_URL"
+        -Dqits.maven.repository.url="$QITS_MAVEN_REPOSITORY_URL"
       ./mvnw -B -ntp -s .qits-maven-settings.xml -pl core,client -DskipTests \
         org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeBom \
         -DoutputFormat=json -DoutputName=sbom -DschemaVersion=1.6 \
-        -Dqits.maven.repository.url="$QITS_MAVEN_REGISTRY_URL"
+        -Dqits.maven.repository.url="$QITS_MAVEN_REPOSITORY_URL"
 

@@ -98,7 +98,7 @@
              release the mock idp arrived in. -->
         <qits.service-mock.version>2026.1002.70617</qits.service-mock.version>
 
-        <qits.maven.repository.url>http://registry.dev.localhost:8080/artifacts/maven/maven</qits.maven.repository.url>
+        <qits.maven.repository.url>https://registry.qits.wohlben.eu/artifacts/maven/maven</qits.maven.repository.url>
 
         <!-- Real PostgreSQL binaries, resolved as ordinary Maven artifacts and spawned as a child
              process by the suite. The platform convention: a clone tests green with NO DOCKER, which
@@ -205,7 +205,9 @@
     <repositories>
         <!-- The platform's own Maven repository, where qits-db-core, qits-arch-rules and
              qits-eventstream are published. The id is what a locally cached copy is recorded under,
-             so it has to stay `qits-maven` or an offline build refuses an artifact it already has. -->
+             so it has to stay `qits-maven` or an offline build refuses an artifact it already has.
+             The host answers 401 anonymously: build with `-s .qits-maven-settings.xml` and the
+             QITS_MAVEN_* variables it reads, or give ~/.m2/settings.xml a `qits-maven` server. -->
         <repository>
             <id>qits-maven</id>
             <url>${qits.maven.repository.url}</url>
