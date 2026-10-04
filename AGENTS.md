@@ -350,8 +350,10 @@ own clone, which is why the release pipeline's two steps each read the version a
 rather than one doing it for both.
 
 **`.config/qits/ci-event-release.yml` is the platform's FIRST dual maven+docker release**, and the
-probe-skip semantics are the part to get right. `artifacts:` declares three things — the two library
-jars and the image — because a declaration is a claim about what **this script pushes**, and qits-ci
+probe-skip semantics are the part to get right. `artifacts:` declares two things — the client jar
+and the image (`core` is internal and unpublished since qits-795: it carries the registry, the
+entities and the Flyway lineage, and nothing outside this repository consumes it) — because a
+declaration is a claim about what **this script pushes**, and qits-ci
 announces one `SoftwareRelease` per entry without being able to see what a step really did.
 `qits-containers-service` is not declared, because nothing uploads it; the deployable ships as the
 image. qits-githost-service's file is the same rule pointing the other way and is worth reading

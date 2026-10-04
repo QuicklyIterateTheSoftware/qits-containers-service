@@ -1,8 +1,8 @@
 # Build context trim for `docker build -f docker/Dockerfile .` (root context, whole reactor).
 #
 # The Dockerfile copies the whole tree rather than a module list: `service` builds its dependency on
-# `qits-containers-core` from source, and a module list would need an edit every time a module is
-# added. This file keeps that cheap — it drops everything the build does not need.
+# `core` (internal, never published) from source, and a module list would need an edit every time a
+# module is added. This file keeps that cheap — it drops everything the build does not need.
 
 .git
 .gitignore

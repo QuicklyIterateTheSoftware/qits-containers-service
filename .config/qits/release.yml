@@ -1,19 +1,25 @@
 archetype: java-service
 artifacts:
-  - { type: maven, name: "eu.wohlben.qits:qits-containers-core", path: core, sbom: core/target/sbom.json }
   - { type: maven, name: "eu.wohlben.qits:qits-containers-client", path: client, sbom: client/target/sbom.json }
   - { type: docker, name: qits/qits-containers, sbom: .sbom/sbom.json }
 userflows: qits-containers
 
-# TWO JARS AND AN IMAGE. maven-library's header names this repository as the case that is neither
+# ONE JAR AND AN IMAGE. maven-library's header names this repository as the case that is neither
 # archetype: the image half is java-service's and the jar half is maven-library's, and no recipe
 # does both. The QA half is three steps rather than two — a unit gate on `maven-base` as `build`
 # BEFORE the image builds, because a broken jar must not cost a native compile.
 #
+# THE ONE JAR IS THE CLIENT. `core` is not published (qits-795): it is an internal module carrying
+# the registry, the entities and the Flyway lineage, and nothing outside this repository consumes it
+# — qits-workspaces and qits-projects take only `qits-containers-client`. Its spec types and docker
+# layer moved to qits-containers-driver (qits-794), which is what a runner embeds instead. The image
+# still builds `core` from source (`-pl service -am` in docker/Dockerfile); only publishing stopped.
+# Its released versions age out through the SBOM-closure collection, never by hand.
+#
 # THE MAVEN STEP IS THE LAST RELEASE STEP ON PURPOSE: qits-ci submits each declared `sbom:` from
 # whichever release step holds the file, so the jar step runs after the image step and makeBom
-# writes `core/target/sbom.json` and `client/target/sbom.json` there for the postlude to submit.
-# The image's SBOM is declared and submitted by the postlude from the image step, as before.
+# writes `client/target/sbom.json` there for the postlude to submit. The image's SBOM is declared
+# and submitted by the postlude from the image step, as before.
 release-request:
   - image: qits/build-images/maven-base:latest
     user: build
@@ -116,15 +122,15 @@ release:
   - image: qits/build-images/maven-base:latest
     timeout-seconds: 1800
     script: |
-      # NO LONGER A DEPLOY: the CLI publishes these two coordinates from the postlude, off the
-      # jars this step leaves in target/. This step only has to build them, and it moves after
+      # NO LONGER A DEPLOY: the CLI publishes the client coordinate from the postlude, off the
+      # jar this step leaves in target/. This step only has to build it, and it moves after
       # the image step so it is the LAST release step, which is where the postlude publishes from.
       qits_domain=${QITS_DOMAIN:-wohlben.eu}
       export QITS_MAVEN_REPOSITORY_URL="https://registry.qits.$qits_domain/artifacts/maven/maven"
       export QITS_MAVEN_CENTRAL_URL="https://mirror.qits.$qits_domain/mirror/maven/central"
-      ./mvnw -B -ntp -s .qits-maven-settings.xml -pl core,client -am package -DskipTests \
+      ./mvnw -B -ntp -s .qits-maven-settings.xml -pl client -am package -DskipTests \
         -Dqits.maven.repository.url="$QITS_MAVEN_REPOSITORY_URL"
-      ./mvnw -B -ntp -s .qits-maven-settings.xml -pl core,client -DskipTests \
+      ./mvnw -B -ntp -s .qits-maven-settings.xml -pl client -DskipTests \
         org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeBom \
         -DoutputFormat=json -DoutputName=sbom -DschemaVersion=1.6 \
         -Dqits.maven.repository.url="$QITS_MAVEN_REPOSITORY_URL"

@@ -11,8 +11,10 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <!-- The domain: the registry rows, the workload spec and its lifecycle policies, and the docker
-         seam the service implements. A plain library jar.
+    <!-- The domain: the registry rows, the sweeps and the spec fingerprint, over the workload spec
+         and the docker seam that qits-containers-driver provides. Internal, not published
+         (qits-795): `service` builds it from source and nothing outside this repository consumes
+         it.
 
          It owns its OWN named datasource + persistence unit + Flyway lineage — its own postgres
          database, provisioned by the platform's `resources:` mechanism before the process boots (see

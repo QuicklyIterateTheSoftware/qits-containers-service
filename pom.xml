@@ -14,9 +14,11 @@
 
          Three modules, and the edges are why there are three:
 
-           core     the domain: the registry rows, the spec and policy vocabulary, the docker seam.
-                    A plain library jar. It owns the datasource, the persistence unit and the
-                    Flyway lineage.
+           core     the domain: the registry rows, the sweeps, the spec fingerprint and the label
+                    facade over qits-containers-driver (which holds the spec vocabulary and the
+                    docker layer). Internal, not published: it carries the registry, the entities
+                    and the Flyway lineage, and nothing outside this repository consumes it. It owns
+                    the datasource, the persistence unit and the Flyway lineage.
            client   what a consumer depends on to CALL this service. It depends on `core` NOT AT
                     ALL, deliberately: a caller needs the wire types and an HttpClient, and a
                     dependency on the domain would drag this service's entities, its Flyway
@@ -33,7 +35,8 @@
     <name>qits-containers</name>
 
     <modules>
-        <!-- Libraries before the app. `service` depends on both; neither depends on the other. -->
+        <!-- Libraries before the app. `service` depends on both; neither depends on the other.
+             `core` is internal and not published; `client` is the one published jar. -->
         <module>core</module>
         <module>client</module>
         <module>service</module>

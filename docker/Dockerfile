@@ -79,8 +79,9 @@ COPY .mvn/ .mvn/
 RUN ./mvnw --version
 
 # The whole reactor, not a module list. `-am` builds `service`'s dependencies from source —
-# `qits-containers-core` and `qits-containers-client` are 1.0.0-SNAPSHOTs this repo publishes
-# nowhere at build time, so a builder container with an empty ~/.m2 has nowhere else to get them.
+# `core` is an internal module this repo never publishes, and `client` is published only after a
+# release, never at build time, so a builder container with an empty ~/.m2 has nowhere else to get
+# either of them.
 # Copying module by module would mean editing this file every time one is added, and forgetting to
 # would fail the build with an unresolved dependency rather than anything that names the real cause.
 # `.dockerignore` is what keeps this cheap, and it also stops a stale target/ shadowing what this
@@ -90,10 +91,11 @@ COPY . .
 # -Dnative flips quarkus.native.enabled (the `native` profile lives in service/pom.xml — only that
 # module is an application). Cap native-image RAM so the build is deterministic on small machines.
 #
-# `-pl service -am` builds the app and its dependency closure rather than the whole reactor. It is
-# not a module list: this repository publishes `core` and `client` as library jars for consumers, and
-# a whole-reactor build would let a compile error in something no image contains block deploying this
-# service. The image build should depend on exactly what the image contains.
+# `-pl service -am` builds the app and its dependency closure (`core`, which the image contains, and
+# whatever else `service` needs) rather than the whole reactor. It is not a module list: this
+# repository publishes `client` as a library jar for consumers, and a whole-reactor build would let a
+# compile error in something no image contains block deploying this service. The image build should
+# depend on exactly what the image contains.
 #
 # Tests are skipped because `./mvnw verify` on a clone is their gate (AGENTS.md) and re-running them
 # here proves the same thing more slowly — and they spawn two postgres child processes, which this
