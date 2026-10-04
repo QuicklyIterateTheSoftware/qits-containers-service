@@ -8,8 +8,8 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
-import eu.wohlben.qits.containers.control.ContainersDriver;
 import eu.wohlben.qits.containers.control.FakeContainersDriver;
+import eu.wohlben.qits.containers.driver.ContainersDriver;
 import eu.wohlben.qits.containers.persistence.CtContainerRepository;
 import eu.wohlben.qits.containers.persistence.CtVolumeRepository;
 import eu.wohlben.qits.containers.spec.ContainerLabels;
@@ -257,7 +257,7 @@ class GcApiTest {
         .body("builders", hasSize(2))
         .body(
             "builders[0].container",
-            is(eu.wohlben.qits.containers.spec.ContainersIdentifiers.PLATFORM_BUILDER))
+            is(eu.wohlben.qits.containers.driver.spec.ContainersIdentifiers.PLATFORM_BUILDER))
         .body("builders[1].container", is("buildx_buildkit_qits-bootstrap-builder-v40"))
         .body("builders[1].reclaimedBytes", is(27_110_000_000L))
         .body("builders[1].detail", notNullValue())
@@ -320,7 +320,7 @@ class GcApiTest {
         List.of(
             "pruneBuildCache:20000000000",
             "pruneBuilderCache:"
-                + eu.wohlben.qits.containers.spec.ContainersIdentifiers.PLATFORM_BUILDER
+                + eu.wohlben.qits.containers.driver.spec.ContainersIdentifiers.PLATFORM_BUILDER
                 + ":20000000000",
             "listBuildxBuilders",
             "pruneBuilderCache:buildx_buildkit_qits-bootstrap-builder-v40:1000000000"),

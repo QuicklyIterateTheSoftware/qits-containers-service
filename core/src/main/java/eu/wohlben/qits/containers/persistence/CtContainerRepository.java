@@ -1,9 +1,9 @@
 package eu.wohlben.qits.containers.persistence;
 
+import eu.wohlben.qits.containers.driver.spec.LifecyclePolicy;
 import eu.wohlben.qits.containers.entity.CtContainer;
 import eu.wohlben.qits.containers.entity.DesiredState;
 import eu.wohlben.qits.containers.entity.ObservedState;
-import eu.wohlben.qits.containers.spec.LifecyclePolicy;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Instant;

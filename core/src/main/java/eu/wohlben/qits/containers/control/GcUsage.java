@@ -1,5 +1,7 @@
 package eu.wohlben.qits.containers.control;
 
+import eu.wohlben.qits.containers.driver.ContainersDriver;
+import eu.wohlben.qits.containers.driver.ContainersTimeouts;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 

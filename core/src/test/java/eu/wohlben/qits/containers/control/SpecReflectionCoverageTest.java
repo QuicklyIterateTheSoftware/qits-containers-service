@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import eu.wohlben.qits.containers.spec.ContainerSpec;
+import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
 import eu.wohlben.qits.containers.spec.SpecReflection;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import java.lang.reflect.ParameterizedType;

@@ -1,5 +1,8 @@
 package eu.wohlben.qits.containers.spec;
 
+import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
+import eu.wohlben.qits.containers.driver.spec.LifecyclePolicy;
+import eu.wohlben.qits.containers.driver.spec.VolumeSpec;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
 /**
@@ -12,18 +15,21 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
  * Quarkus auto-registers the types it finds on a REST resource signature; {@link ContainerSpec} is
  * on no signature. It reaches Jackson only through the registry's own write, so on a native binary
  * it has no components to find and every {@code ensure} answers 500 with
- * {@code could not serialize eu.wohlben.qits.containers.spec.ContainerSpec}. Measured on the
+ * {@code could not serialize eu.wohlben.qits.containers.spec.ContainerSpec} (its package then). Measured on the
  * 2026-08-11 rebootstrap, on the first real CI step this service was asked to start.
  *
  * <p>The fleet has been here twice: qits-eventstream's {@code EventPage}/{@code EventFrame} on
  * 2026-08-06 and the containers client's wire records the day after. Both fixes are this shape.
  *
- * <p><b>It sits beside the records rather than in the deployable</b>, and both halves of that are
- * deliberate. {@code core} already has {@code quarkus-core} on its compile path (through
- * {@code quarkus-arc}) and is Jandex-indexed, so the annotation costs this jar no new dependency and
- * is discovered by whatever application ships it. And the drift hazard is what actually bites: a
- * record component added to {@link ContainerSpec} is added in <em>this directory</em>, next to this
- * list, rather than two modules away.
+ * <p><b>The records live in qits-containers-driver and this list stays here</b>, and both halves of
+ * that are deliberate. The driver jar is plain Java with no Quarkus on its path, so it cannot carry
+ * the annotation, and it serializes nothing — Jackson and {@code SpecFingerprint} are this service's,
+ * so the registration is this service's too. {@code core} already has {@code quarkus-core} on its
+ * compile path (through {@code quarkus-arc}) and is Jandex-indexed, so the annotation is discovered
+ * by whatever application ships it, and {@code targets} names classes outside this jar's index. A
+ * record component added to {@link ContainerSpec} upstream is caught here by {@code
+ * SpecReflectionCoverageTest}, and before that by the library's own shape test and this service's
+ * {@code SpecFingerprintGoldenTest}.
  *
  * <p><b>Both directions are on the list.</b> A type this service only writes needs the registration
  * as much as one it reads — on the writing side an unregistered record has no components to find,

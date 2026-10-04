@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import eu.wohlben.qits.containers.control.ContainerNames;
 import eu.wohlben.qits.containers.control.FakeContainersDriver;
@@ -19,6 +20,7 @@ import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
 import jakarta.inject.Inject;
 import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -212,7 +214,7 @@ class ContainersApiTest {
   @Test
   void anImageNothingPublishedIsAFourOhNineAndNotAGreenPlace() {
     driver.scriptRun(
-        new eu.wohlben.qits.containers.control.ContainersDriver.Started(
+        new eu.wohlben.qits.containers.driver.ContainersDriver.Started(
             false, "", "docker: Error response from daemon: manifest unknown: manifest unknown."));
 
     given()
@@ -253,6 +255,33 @@ class ContainersApiTest {
         .then()
         .statusCode(400)
         .body("code", is("INVALID"));
+  }
+
+  @Test
+  void anOwnerLabelInsideThisServicesNamespaceIsAFourHundredBeforeAnyRow() {
+    // The belt the spec record used to carry and qits-containers-driver's LabelNamespace carries
+    // now: an owner that could write qits.containers.* could label somebody else's workload as its
+    // own. Same status, same message, and still before a row or a docker call exists.
+    given()
+        .contentType(ContentType.JSON)
+        .body(
+            """
+            {"spec":{"image":"alpine:3","network":"qits-net",
+                     "extraLabels":{"qits.workspace":"ws-1","QITS.Containers.owner":"qits-workspaces"}},
+             "policy":{"type":"EXPLICIT"}}""")
+        .when()
+        .put(PLACE)
+        .then()
+        .statusCode(400)
+        .body("code", is("INVALID"))
+        .body(
+            "message",
+            equalTo(
+                "Invalid label key (the qits.containers.namespace is this service's):"
+                    + " 'QITS.Containers.owner'"));
+
+    given().when().get(PLACE).then().statusCode(404);
+    assertEquals(List.of(), driver.calls());
   }
 
   // --- reads --------------------------------------------------------------------------------------

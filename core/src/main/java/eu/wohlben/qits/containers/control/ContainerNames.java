@@ -1,6 +1,6 @@
 package eu.wohlben.qits.containers.control;
 
-import eu.wohlben.qits.containers.spec.ContainersIdentifiers;
+import eu.wohlben.qits.containers.driver.spec.ContainersIdentifiers;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

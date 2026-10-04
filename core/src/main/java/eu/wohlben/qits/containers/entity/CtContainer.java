@@ -1,6 +1,6 @@
 package eu.wohlben.qits.containers.entity;
 
-import eu.wohlben.qits.containers.spec.LifecyclePolicy;
+import eu.wohlben.qits.containers.driver.spec.LifecyclePolicy;
 import eu.wohlben.qits.eventstream.CausationStamp;
 import eu.wohlben.qits.eventstream.CausedRow;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;

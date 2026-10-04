@@ -23,10 +23,12 @@ The store being postgres costs no docker either: `testdb/EmbeddedPg` spawns zonk
 a child process — a maven dependency, not a container. **Never Testcontainers, never a Quarkus dev
 service.**
 
-**One address is the whole exception.** `qits-db-core`, `qits-arch-rules`, `qits-eventstream` and
-`qits-auth-core` come from the platform Maven repository (`<repositories>` in the root pom), so a
-clone builds green with that repository reachable and offline once the jars are in `~/.m2`. Nothing
-else may follow them in.
+**One address is the whole exception.** `qits-db-core`, `qits-arch-rules`, `qits-eventstream`,
+`qits-auth-core` and `qits-containers-driver` come from the platform Maven repository
+(`<repositories>` in the root pom), so a clone builds green with that repository reachable and
+offline once the jars are in `~/.m2`. Nothing else may follow them in. `qits-containers-driver` is
+the fifth (qits-623), and it is not a widening so much as this repository's own docker layer moved
+out so that a runner holding a docker socket can embed it — see the Conventions below.
 
 `qits-auth-core` is the fourth and it arrived in WP4, which is what widening that list costs: every
 route here is addressed to an owner, the owner **is** the caller, and the platform has exactly one
@@ -81,27 +83,55 @@ exempt, including the ones that "cannot" block.
 - `eu.wohlben.qits.containers.*`, split across three maven modules with disjoint sub-packages, so
   there is no split package. `core` owns the root, `spec`, `docker`, `control`, `entity` and
   `persistence`; `client` owns `client`; `service` owns the adapters.
+- **The docker layer is not in this repository any more.** Since qits-623 it is the jar
+  `eu.wohlben.qits:qits-containers-driver`, built from
+  `components/qits-containers/qits-containers-javalib` and pinned in the root pom
+  (`qits.containers-driver.version`), under
+  `eu.wohlben.qits.containers.driver` — so it splits no package with this repo. It holds the spec
+  types (`driver.spec`: `ContainerSpec`, `LifecyclePolicy`, `VolumeSpec`, `ContainersIdentifiers`,
+  `LabelNamespace`), `driver.docker` (`DockerArgv`, `ContainerProcess`), the seam and its real
+  implementation (`driver`: `ContainersDriver`, `ContainersTimeouts`, `DockerContainersDriver`,
+  `DockerSocketGroup`, `DockerGcReads`) and the pure GC decisions (`driver.gc`: `ImageKeepRules`,
+  `VolumeClassifier`). It is plain Java — no CDI, no config file, no Jackson — because a runner
+  holding a docker socket embeds it too. What stays here is everything DB-bound and everything
+  Quarkus: the registry and every sweep, `SpecFingerprint` (and with it Jackson), `ContainerNames`,
+  `SpecReflection`, `docker/DockerConfigFile`, `PlatformBuildkit`, `SharedResources`, and
+  `service/dockerhost/DriverProducer`, the one place this service's configuration becomes the
+  driver. A change to the docker layer is a library release and a version bump here, and
+  `core`'s `SpecFingerprintGoldenTest` must stay green on every bump: the spec types decide every
+  stored `spec_hash`, and a moved hash recreates every container on its next ensure.
+- **`qits.containers.` is this service's `LabelNamespace`, and no other embedder may pass it.**
+  `spec/ContainerLabels` is the facade: `NS = new LabelNamespace("qits.containers.")`, and every
+  constant and `for*` map is computed from it. The driver is constructed with `NS`, so it writes
+  every label and the builder stamp (`qits.containers.buildkit.config`) under it and refuses an
+  owner label inside it on every argv; `api/ContainersWire.toSpec` refuses the same key first, so a
+  request carrying one is a 400 before any row exists. `VolumeGc` classifies under `NS` too — a
+  volume labelled `<ns>managed=volume` with no row is removed — which is why a runner beside this
+  service labelling under `qits.containers.` would hand its volumes to this service's collection.
 - **`control` never touches docker directly and `entity` never decides anything.** The registry, the
   boot sweep, the observer and the policy sweeps all live in `control`, they all call the seam, and
   they all write rows through the repositories in `persistence`. A query that answers "which
   containers look like mine" belongs in neither: the rows are the registry, and a listing by label
   is the reap this repo exists to remove.
 - **A docker daemon that did not answer is not a docker daemon with no such container.**
-  `DockerContainersDriver.inspect` **throws** when the call could not be made or timed out, and
-  answers empty only for a refusal that says "no such container". Its empty answer is a positive
+  `DockerContainersDriver.inspect` (in the driver jar) **throws** when the call could not be made or
+  timed out, and answers empty only for a refusal that says "no such container". Its empty answer is a positive
   statement the boot sweep settles rows on and that `delete` reads as "it is really gone" — a delete
   that took "we could not find out" for that would settle `GONE` over a container still running,
   which nothing would ever look at again. Every caller already treats the throw as "say nothing".
   The listings degrade to empty with a warning instead, because an empty listing is a statement
   about no particular container.
-- **`core/docker` is argv and process, never a docker call.** `DockerArgv` is pure functions and
-  `ContainerProcess` is the shell-out; the driver that puts them together is an interface here
-  (`control/ContainersDriver`) and an implementation in `service/`. That is what lets the argvs — the
-  sandbox itself — be asserted element for element with no daemon anywhere. `docker exec` is in that
-  vocabulary for **one** command — `buildctl prune`/`du` inside a `buildx_buildkit_*` container —
-  and both of its words are constants; `ContainerProcess`'s javadoc says what a second use would
-  cost. The reading of what those calls print is `service/dockerhost/DockerGcReads`, pure functions
-  beside the driver for the same reason the argvs sit beside it.
+- **The argv is pure and the process is one shell-out, and both live in the driver jar.**
+  `driver.docker.DockerArgv` is pure functions and `ContainerProcess` is the shell-out; the seam
+  that puts them together is `driver.ContainersDriver` and its implementation
+  `driver.DockerContainersDriver`, which `service/dockerhost/DriverProducer` constructs. That is what
+  lets the argvs — the sandbox itself — be asserted element for element with no daemon anywhere, in
+  the library's own suite. `docker exec` is in that vocabulary for **one** command — `buildctl
+  prune`/`du` inside a `buildx_buildkit_*` container — and both of its words are constants;
+  `ContainerProcess`'s javadoc says what a second use would cost. The reading of what those calls
+  print is `driver.DockerGcReads`, pure functions beside the driver for the same reason the argvs
+  sit beside it. What `core/docker` still holds is `DockerConfigFile`, this service's own docker
+  credential.
 - **The fakes are duplicated per module, not shared.** Maven has no `testFixtures`, and a test-jar
   dependency between modules that otherwise have none is the higher price. `core`'s
   `FakeContainersDriver` is the original; a module that needs one copies it. Same stance as
@@ -372,7 +402,7 @@ refused 403 on this owner's rows and served 200 on its own.
 
 `stories/support/StoryDocker` writes an **executable** and the profile points
 `qits.containers.container-runtime` at it. That is the honest shape of this seam and not a
-convenience: `core/docker/ContainerProcess` **spawns the docker CLI** and reads its pipes, so a
+convenience: the driver jar's `ContainerProcess` **spawns the docker CLI** and reads its pipes, so a
 stubbed HTTP endpoint would stand in for nothing. The script records every argv with the exit code
 it answered, and keeps just enough state under `target/story-docker/state/` that the registry's own
 state machine — the row before the run, the inspect that settles it, the idempotent delete — runs
@@ -386,8 +416,8 @@ registry's postgres, which no tap on this side can see.
 Four things about it are load-bearing:
 
 - **The answers are docker's own words where the wording is read.** `No such object` is what
-  `DockerContainersDriver.ABSENT_MARKERS` matches to tell "docker has no such container" from
-  "docker did not answer"; `manifest unknown` is what `ContainersResource.IMAGE_MISSING_MARKERS`
+  the driver jar's `DockerContainersDriver.ABSENT_MARKERS` matches to tell "docker has no such
+  container" from "docker did not answer"; `manifest unknown` is what `ContainersResource.IMAGE_MISSING_MARKERS`
   matches to turn a refused run into a 409. Getting either string wrong would make the stories pass
   against a daemon that behaves differently from every real one.
 - **The recording has NO floor**, unlike every other file-backed tap in the fleet. The calls the

@@ -1,10 +1,10 @@
 package eu.wohlben.qits.containers.api;
 
+import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
+import eu.wohlben.qits.containers.driver.spec.LifecyclePolicy;
 import eu.wohlben.qits.containers.entity.DesiredState;
 import eu.wohlben.qits.containers.entity.ObservedState;
 import eu.wohlben.qits.containers.entity.VolumeState;
-import eu.wohlben.qits.containers.spec.ContainerSpec;
-import eu.wohlben.qits.containers.spec.LifecyclePolicy;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
 /**

@@ -1,7 +1,9 @@
 package eu.wohlben.qits.containers.control;
 
-import eu.wohlben.qits.containers.control.ContainersDriver.CacheResult;
-import eu.wohlben.qits.containers.spec.ContainersIdentifiers;
+import eu.wohlben.qits.containers.driver.ContainersDriver;
+import eu.wohlben.qits.containers.driver.ContainersDriver.CacheResult;
+import eu.wohlben.qits.containers.driver.ContainersTimeouts;
+import eu.wohlben.qits.containers.driver.spec.ContainersIdentifiers;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.ArrayList;

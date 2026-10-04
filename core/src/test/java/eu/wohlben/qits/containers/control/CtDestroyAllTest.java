@@ -4,9 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import eu.wohlben.qits.containers.driver.spec.LifecyclePolicy;
 import eu.wohlben.qits.containers.entity.DesiredState;
 import eu.wohlben.qits.containers.entity.ObservedState;
-import eu.wohlben.qits.containers.spec.LifecyclePolicy;
 import io.quarkus.test.junit.QuarkusTest;
 import java.time.Duration;
 import java.time.Instant;

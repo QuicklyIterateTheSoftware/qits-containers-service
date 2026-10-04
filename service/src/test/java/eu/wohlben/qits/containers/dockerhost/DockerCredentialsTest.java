@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import eu.wohlben.qits.containers.docker.DockerConfigFile;
+import eu.wohlben.qits.containers.driver.DockerContainersDriver;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
@@ -67,13 +68,12 @@ public class DockerCredentialsTest {
     Path script = tmp.resolve("fake-docker");
     Files.writeString(script, "#!/bin/sh\necho \"cfg=${DOCKER_CONFIG:-unset}\"\n");
     script.toFile().setExecutable(true);
-    DockerContainersDriver driver = new DockerContainersDriver();
-    driver.runtime = script.toString();
+    DockerContainersDriver driver = DriverProducer.driver(script.toString(), () -> "", null);
 
     String inherited = Optional.ofNullable(System.getenv("DOCKER_CONFIG")).orElse("unset");
     assertEquals(
         List.of("cfg=" + inherited), driver.listBuildxBuilders(Duration.ofSeconds(30)));
-    driver.dockerConfigDir = " ";
+    driver = DriverProducer.driver(script.toString(), () -> "", " ");
     assertEquals(
         List.of("cfg=" + inherited), driver.listBuildxBuilders(Duration.ofSeconds(30)));
   }
@@ -85,9 +85,8 @@ public class DockerCredentialsTest {
     script.toFile().setExecutable(true);
     Path dir = tmp.resolve("qits-docker");
 
-    DockerContainersDriver driver = new DockerContainersDriver();
-    driver.runtime = script.toString();
-    driver.dockerConfigDir = dir.toString();
+    DockerContainersDriver driver =
+        DriverProducer.driver(script.toString(), () -> "", dir.toString());
 
     // No file: the deployment's own environment is the child's — the rollback onto /work/config.
     String inherited = Optional.ofNullable(System.getenv("DOCKER_CONFIG")).orElse("unset");

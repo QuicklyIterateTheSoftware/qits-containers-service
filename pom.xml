@@ -98,6 +98,14 @@
              release the mock idp arrived in. -->
         <qits.service-mock.version>2026.1002.70617</qits.service-mock.version>
 
+        <!-- The docker layer: the spec types, the label namespace, the argv, the process runner, the
+             driver and the pure GC decisions, released out of qits-containers-javalib
+             (eu.wohlben.qits.containers.driver). Plain Java with jboss-logging alone, so a runner
+             that holds a docker socket embeds the same code this service runs (qits-623). A bump
+             here must keep core's SpecFingerprintGoldenTest green: the spec types decide every
+             stored spec_hash. -->
+        <qits.containers-driver.version>2026.1004.204507</qits.containers-driver.version>
+
         <qits.maven.repository.url>https://registry.qits.wohlben.eu/artifacts/maven/maven</qits.maven.repository.url>
 
         <!-- Real PostgreSQL binaries, resolved as ordinary Maven artifacts and spawned as a child
@@ -187,6 +195,11 @@
                 <groupId>${project.groupId}</groupId>
                 <artifactId>qits-service-mock</artifactId>
                 <version>${qits.service-mock.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>qits-containers-driver</artifactId>
+                <version>${qits.containers-driver.version}</version>
             </dependency>
             <!-- The reactor's own modules, so `service` depends on them version-less. -->
             <dependency>

@@ -24,9 +24,28 @@ call this service for a step any more — not through the client, not through th
 
 | Module | What |
 |---|---|
-| `core/` | The domain: the registry rows, the workload spec and its lifecycle policies, the docker seam. A library jar. It owns the datasource, the persistence unit and the Flyway lineage. |
+| `core/` | The domain: the registry rows, the sweeps, the spec fingerprint and the label facade (`spec/ContainerLabels`). An internal jar of this repository. It owns the datasource, the persistence unit and the Flyway lineage. |
 | `client/` | What a consumer depends on to **call** this service: the wire records, the four-outcome answer and the HttpClient behind them. It depends on `core` **not at all**. |
-| `service/` | The deployable: the REST surface under `/containers/api`, the real docker driver (`dockerhost/`), the machine guard, the boot steps. |
+| `service/` | The deployable: the REST surface under `/containers/api`, the driver's wiring (`dockerhost/DriverProducer`), the machine guard, the boot steps. |
+
+**The docker layer lives in its own jar**, `eu.wohlben.qits:qits-containers-driver`, released from
+`components/qits-containers/qits-containers-javalib` and pinned in the root pom
+(`qits.containers-driver.version`). It holds the workload spec and its lifecycle policies
+(`eu.wohlben.qits.containers.driver.spec`), the argv and the process runner (`driver.docker`), the
+`ContainersDriver` seam with the real `DockerContainersDriver` and `DockerSocketGroup`
+(`driver`), and the pure GC decisions this service's `ImageGc` and `VolumeGc` delegate to
+(`driver.gc`). It is plain Java with no CDI, no config file and no Jackson, so a runner that holds a
+docker socket embeds exactly the code this service runs (qits-623). `core`'s
+`SpecFingerprintGoldenTest` pins every stored `spec_hash` against it: a bump of the jar that moved
+one would recreate every container on its next ensure.
+
+**`qits.containers.` is this service's `LabelNamespace`.** The driver takes its label namespace as a
+constructor argument; `spec/ContainerLabels.NS` is this service's choice, and `DriverProducer` passes
+it. Every label this service writes, the builder stamp `qits.containers.buildkit.config`, the
+owner-label refusal (a `qits.containers.*` key in a spec's `extraLabels` is a 400) and the volume
+collection's `managed-no-row` class are all read off it. Another embedder on the same host passes its
+own namespace and never this one: a volume labelled `qits.containers.managed=volume` that no row
+claims is one this service removes.
 
 The directories are short and the artifactIds are namespaced (`qits-containers-*`): generic
 coordinates like `eu.wohlben:core` would collide in the shared `~/.m2` that every workspace
@@ -397,7 +416,7 @@ oversight: a host that has just rebooted has this service up before its docker.
 
 **A workload that declares the bind gets the same second half, and it does not ask for it.** A spec
 with `hostDockerSocket` renders `-v /var/run/docker.sock:…` *and* `--group-add <the socket's gid>`,
-where the gid is read off the socket by this process (`dockerhost/DockerSocketGroup`, overridable
+where the gid is read off the socket by this process (the driver jar's `DockerSocketGroup`, overridable
 with `QITS_CONTAINERS_DOCKER_SOCKET_GROUP`) — the same `unix:gid` the platform bootstrap reads when
 it decides which group to start this service in. The reason is the paragraph above, one hop out: a
 container holding the bind and running as anybody but root is refused on `connect`, so the mount

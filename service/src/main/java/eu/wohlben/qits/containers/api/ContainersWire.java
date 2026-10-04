@@ -1,10 +1,11 @@
 package eu.wohlben.qits.containers.api;
 
+import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
+import eu.wohlben.qits.containers.driver.spec.LifecyclePolicy;
 import eu.wohlben.qits.containers.entity.DesiredState;
 import eu.wohlben.qits.containers.entity.ObservedState;
 import eu.wohlben.qits.containers.entity.VolumeState;
-import eu.wohlben.qits.containers.spec.ContainerSpec;
-import eu.wohlben.qits.containers.spec.LifecyclePolicy;
+import eu.wohlben.qits.containers.spec.ContainerLabels;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -248,12 +249,17 @@ public final class ContainersWire {
 
   // --- the wire to the domain, and the belts fire here -------------------------------------------
 
-  /** The spec a caller sent, as the domain record. Every belt in the compact constructor runs. */
+  /**
+   * The spec a caller sent, as the domain record. Every belt in the compact constructor runs, and
+   * then the owner-label belt: a key inside {@link ContainerLabels#NS} is refused here, before any
+   * row is written. The spec record lives in qits-containers-driver and cannot know who embeds it,
+   * so that refusal is this service's to make (the driver makes it again on every argv).
+   */
   public static ContainerSpec toSpec(SpecDto dto) {
     if (dto == null) {
       throw new IllegalArgumentException("Invalid request: no spec");
     }
-    return new ContainerSpec(
+    ContainerSpec spec = new ContainerSpec(
         dto.image(),
         dto.entrypoint(),
         dto.args(),
@@ -289,6 +295,8 @@ public final class ContainersWire {
         // Nullable on the wire and a plain false in the domain: a caller written before the field
         // existed sends no `init` at all, and an absent one has to mean the behaviour it had then.
         dto.init() != null && dto.init());
+    ContainerLabels.NS.requireOwnerLabels(spec.extraLabels());
+    return spec;
   }
 
   /** The policy a caller sent. A body with no policy is refused rather than defaulted. */

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import eu.wohlben.qits.containers.driver.ContainersDriver;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.util.List;
@@ -29,7 +30,7 @@ public class CtBuildCacheGcTest extends CtTestSupport {
    * docker it is the platform's build cache, not a bootstrap leftover.
    */
   private static final String PLATFORM =
-      eu.wohlben.qits.containers.spec.ContainersIdentifiers.PLATFORM_BUILDER;
+      eu.wohlben.qits.containers.driver.spec.ContainersIdentifiers.PLATFORM_BUILDER;
 
   private static final long KEEP = 20_000_000_000L;
 

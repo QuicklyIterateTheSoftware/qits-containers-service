@@ -1,7 +1,7 @@
 package eu.wohlben.qits.containers.api;
 
 import eu.wohlben.qits.auth.MachineAuth;
-import eu.wohlben.qits.containers.spec.ContainersIdentifiers;
+import eu.wohlben.qits.containers.driver.spec.ContainersIdentifiers;
 import io.quarkus.security.ForbiddenException;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.ApplicationScoped;

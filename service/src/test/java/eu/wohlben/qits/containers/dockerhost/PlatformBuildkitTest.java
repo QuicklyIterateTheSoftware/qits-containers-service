@@ -5,10 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import eu.wohlben.qits.containers.control.ContainersDriver;
 import eu.wohlben.qits.containers.control.FakeContainersDriver;
-import eu.wohlben.qits.containers.spec.ContainerSpec;
-import eu.wohlben.qits.containers.spec.ContainersIdentifiers;
+import eu.wohlben.qits.containers.driver.ContainersDriver;
+import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
+import eu.wohlben.qits.containers.driver.spec.ContainersIdentifiers;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;

@@ -1,6 +1,6 @@
 package eu.wohlben.qits.containers.spec;
 
-import java.util.LinkedHashMap;
+import eu.wohlben.qits.containers.driver.spec.LabelNamespace;
 import java.util.Map;
 
 /**
@@ -18,36 +18,47 @@ import java.util.Map;
  * describes itself to a person reading {@code docker ps} and how a listing narrows before the rows
  * decide; no code path may remove a container because it carries one. That is the first invariant in
  * AGENTS.md, and it is why {@link #MANAGED} is a statement of kind rather than a licence.
+ *
+ * <p><b>The vocabulary itself lives in qits-containers-driver</b>, as a {@link LabelNamespace} the
+ * embedder chooses. This class is this service's choice, {@link #NS} = {@value #NAMESPACE}, and the
+ * facade every caller here reads: each constant and each {@code for*} map is computed from {@link
+ * #NS}, so the values are exactly the literals they always were. The driver is constructed with the
+ * same {@link #NS}, which is what makes it refuse an owner label inside it and stamp the builder
+ * under it. A runner embedding the driver beside this service passes its own namespace and never
+ * this one: a volume labelled under {@value #NAMESPACE} is one {@code VolumeGc} may remove.
  */
 public final class ContainerLabels {
 
   /** The prefix every label here shares. An owner may not write inside it — see the belts. */
   public static final String NAMESPACE = "qits.containers.";
 
-  /** {@value #MANAGED_CONTAINER} or {@value #MANAGED_VOLUME} — what kind of thing this is. */
-  public static final String MANAGED = NAMESPACE + "managed";
+  /** This service's label namespace — what the driver is constructed with. */
+  public static final LabelNamespace NS = new LabelNamespace(NAMESPACE);
 
-  public static final String MANAGED_CONTAINER = "container";
-  public static final String MANAGED_VOLUME = "volume";
+  /** {@value #MANAGED_CONTAINER} or {@value #MANAGED_VOLUME} — what kind of thing this is. */
+  public static final String MANAGED = NS.managed();
+
+  public static final String MANAGED_CONTAINER = LabelNamespace.MANAGED_CONTAINER;
+  public static final String MANAGED_VOLUME = LabelNamespace.MANAGED_VOLUME;
 
   /** Which platform module asked for it. */
-  public static final String OWNER = NAMESPACE + "owner";
+  public static final String OWNER = NS.owner();
 
   /** What kind of workload it is, in the owner's own words. */
-  public static final String WORKLOAD = NAMESPACE + "workload";
+  public static final String WORKLOAD = NS.workload();
 
   /** The owner's identifier for the thing this workload belongs to. Opaque to this service. */
-  public static final String REF = NAMESPACE + "ref";
+  public static final String REF = NS.ref();
 
   /** The registry row that named this container <b>before</b> it was started. */
-  public static final String ROW = NAMESPACE + "row";
+  public static final String ROW = NS.row();
 
   /**
    * Which run of this service started it. It is what tells a container this process started from one
    * a previous life did — and it is a diagnostic, never a filter a sweep acts on: adopting is the
    * rule, so "started by an earlier instance" must not be readable as "removable".
    */
-  public static final String INSTANCE = NAMESPACE + "instance";
+  public static final String INSTANCE = NS.instance();
 
   private ContainerLabels() {}
 
@@ -58,14 +69,7 @@ public final class ContainerLabels {
    */
   public static Map<String, String> forContainer(
       String owner, String workload, String ref, String rowId, String instanceId) {
-    Map<String, String> labels = new LinkedHashMap<>();
-    labels.put(MANAGED, MANAGED_CONTAINER);
-    labels.put(OWNER, ContainersIdentifiers.requireOwner(owner));
-    labels.put(WORKLOAD, ContainersIdentifiers.requireWorkload(workload));
-    labels.put(REF, ContainersIdentifiers.requireRef(ref));
-    labels.put(ROW, ContainersIdentifiers.requireRef(rowId));
-    labels.put(INSTANCE, ContainersIdentifiers.requireRef(instanceId));
-    return labels;
+    return NS.forContainer(owner, workload, ref, rowId, instanceId);
   }
 
   /**
@@ -77,10 +81,7 @@ public final class ContainerLabels {
    * what decides either way.
    */
   public static Map<String, String> forOwnerVolume(String owner) {
-    Map<String, String> labels = new LinkedHashMap<>();
-    labels.put(MANAGED, MANAGED_VOLUME);
-    labels.put(OWNER, ContainersIdentifiers.requireOwner(owner));
-    return labels;
+    return NS.forOwnerVolume(owner);
   }
 
   /**
@@ -88,11 +89,6 @@ public final class ContainerLabels {
    * mounted it and the process that made it, which is the whole reason it is a volume.
    */
   public static Map<String, String> forVolume(String owner, String workload, String ref) {
-    Map<String, String> labels = new LinkedHashMap<>();
-    labels.put(MANAGED, MANAGED_VOLUME);
-    labels.put(OWNER, ContainersIdentifiers.requireOwner(owner));
-    labels.put(WORKLOAD, ContainersIdentifiers.requireWorkload(workload));
-    labels.put(REF, ContainersIdentifiers.requireRef(ref));
-    return labels;
+    return NS.forVolume(owner, workload, ref);
   }
 }

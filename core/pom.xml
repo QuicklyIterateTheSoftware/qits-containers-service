@@ -27,6 +27,15 @@
 
     <dependencies>
         <dependency>
+            <!-- The docker layer this module's registry and sweeps drive: ContainerSpec and its
+                 siblings, LabelNamespace, DockerArgv, ContainerProcess, the ContainersDriver seam,
+                 the constructor-built DockerContainersDriver, and the pure GC decisions. Compile
+                 scope, because the spec types are this module's API and `service` produces the
+                 driver from it. -->
+            <groupId>${project.groupId}</groupId>
+            <artifactId>qits-containers-driver</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-arc</artifactId>
         </dependency>

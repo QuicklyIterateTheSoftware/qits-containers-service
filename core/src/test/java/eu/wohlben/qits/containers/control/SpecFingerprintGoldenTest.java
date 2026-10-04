@@ -2,11 +2,11 @@ package eu.wohlben.qits.containers.control;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import eu.wohlben.qits.containers.spec.ContainerSpec;
-import eu.wohlben.qits.containers.spec.ContainerSpec.PullPolicy;
-import eu.wohlben.qits.containers.spec.ContainerSpec.SecurityPosture;
-import eu.wohlben.qits.containers.spec.ContainerSpec.SharedMount;
-import eu.wohlben.qits.containers.spec.ContainerSpec.VolumeMount;
+import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
+import eu.wohlben.qits.containers.driver.spec.ContainerSpec.PullPolicy;
+import eu.wohlben.qits.containers.driver.spec.ContainerSpec.SecurityPosture;
+import eu.wohlben.qits.containers.driver.spec.ContainerSpec.SharedMount;
+import eu.wohlben.qits.containers.driver.spec.ContainerSpec.VolumeMount;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;

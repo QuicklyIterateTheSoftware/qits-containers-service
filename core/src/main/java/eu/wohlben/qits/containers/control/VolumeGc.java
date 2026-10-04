@@ -1,8 +1,10 @@
 package eu.wohlben.qits.containers.control;
 
-import eu.wohlben.qits.containers.control.ContainersDriver.VolumeDetail;
+import eu.wohlben.qits.containers.driver.ContainersDriver;
+import eu.wohlben.qits.containers.driver.ContainersDriver.VolumeDetail;
+import eu.wohlben.qits.containers.driver.ContainersTimeouts;
+import eu.wohlben.qits.containers.driver.gc.VolumeClassifier;
 import eu.wohlben.qits.containers.spec.ContainerLabels;
-import eu.wohlben.qits.containers.spec.ContainersIdentifiers;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
@@ -12,7 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Pattern;
 import org.jboss.logging.Logger;
 
 /**
@@ -53,6 +54,11 @@ import org.jboss.logging.Logger;
  * is kept {@code too-young}. A buildx state volume has no age rule: its builder container existing
  * or not is a better answer than any clock, and it is the answer that is asked for.
  *
+ * <p><b>The classification is qits-containers-driver's {@link VolumeClassifier}</b>, decided under this
+ * service's {@link ContainerLabels#NS}: a volume another embedder labelled under its own namespace
+ * is {@code unmanaged} here and kept. This class inspects, asks the rows, and maps the verdicts onto
+ * the reason strings below, which are the {@code /gc} answer's.
+ *
  * <p><b>No row is written, updated or deleted here, ever.</b> {@link VolumeReconcile} owns the rows,
  * and this class is deliberately the one that cannot: a collection that dropped a row as it removed
  * a volume would be able to erase the record of a volume it removed in error.
@@ -85,13 +91,6 @@ public class VolumeGc {
 
   /** Kept: docker no longer has it — it went between the listing and the inspect. */
   public static final String VANISHED = "vanished";
-
-  /** A builder's state volume: the builder container's name with {@code _state} after it. */
-  private static final Pattern BUILDX_STATE_NAME =
-      Pattern.compile("^" + Pattern.quote(ContainersIdentifiers.BUILDER_PREFIX) + ".+_state$");
-
-  /** What docker names a volume it made for a container that named none. */
-  private static final Pattern ANONYMOUS_NAME = Pattern.compile("^[0-9a-f]{64}$");
 
   /** One volume and what was decided about it. */
   public record Outcome(String name, String reason) {}
@@ -168,36 +167,35 @@ public class VolumeGc {
     return MANAGED_NO_ROW.equals(reason) || BUILDX_STATE.equals(reason) || ANONYMOUS.equals(reason);
   }
 
-  /** Which class this volume is in — the removable ones first, {@code unmanaged} as the fall-through. */
+  /**
+   * Which class this volume is in — the removable ones first, {@code unmanaged} as the fall-through.
+   * The inspect, then the decision; the decision asks docker for the containers using the volume
+   * only for a buildx state name, and that listing throws rather than degrading: a builder that
+   * could not be asked about is a builder whose cache is kept.
+   */
   private String classify(String name, boolean hasRow, Instant youngest) {
     Optional<VolumeDetail> detail = driver.inspectVolume(name, ContainersTimeouts.VOLUME);
-    if (detail.isEmpty()) {
-      return VANISHED;
-    }
-    VolumeDetail volume = detail.get();
-    if (ContainerLabels.MANAGED_VOLUME.equals(volume.labels().get(ContainerLabels.MANAGED))) {
-      if (hasRow) {
-        return LIVE_ROW;
-      }
-      return tooYoung(volume, youngest) ? TOO_YOUNG : MANAGED_NO_ROW;
-    }
-    if (BUILDX_STATE_NAME.matcher(name).matches()) {
-      // The listing that throws rather than degrading: a builder that could not be asked about is a
-      // builder whose cache is kept.
-      List<String> holders = driver.listContainersUsingVolume(name, ContainersTimeouts.GC_LIST);
-      boolean builderHolds =
-          holders.stream()
-              .anyMatch(holder -> holder.startsWith(ContainersIdentifiers.BUILDER_PREFIX));
-      return builderHolds ? BUILDX_LIVE : BUILDX_STATE;
-    }
-    if (ANONYMOUS_NAME.matcher(name).matches()) {
-      return tooYoung(volume, youngest) ? TOO_YOUNG : ANONYMOUS;
-    }
-    return UNMANAGED;
+    return reason(
+        VolumeClassifier.classify(
+            name,
+            detail,
+            hasRow,
+            youngest,
+            ContainerLabels.NS,
+            n -> driver.listContainersUsingVolume(n, ContainersTimeouts.GC_LIST)));
   }
 
-  /** Whether docker made it inside the caller's grace. A volume with no time reads as old. */
-  private static boolean tooYoung(VolumeDetail volume, Instant youngest) {
-    return youngest != null && volume.createdAt() != null && volume.createdAt().isAfter(youngest);
+  /** A classifier's verdict, as the reason string the {@code /gc} answer carries. */
+  private static String reason(VolumeClassifier.Verdict verdict) {
+    return switch (verdict) {
+      case VANISHED -> VolumeGc.VANISHED;
+      case CLAIMED -> VolumeGc.LIVE_ROW;
+      case TOO_YOUNG -> VolumeGc.TOO_YOUNG;
+      case MANAGED_UNCLAIMED -> VolumeGc.MANAGED_NO_ROW;
+      case BUILDX_LIVE -> VolumeGc.BUILDX_LIVE;
+      case BUILDX_STATE -> VolumeGc.BUILDX_STATE;
+      case ANONYMOUS -> VolumeGc.ANONYMOUS;
+      case UNMANAGED -> VolumeGc.UNMANAGED;
+    };
   }
 }

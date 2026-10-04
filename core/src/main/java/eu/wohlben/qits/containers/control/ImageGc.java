@@ -1,6 +1,9 @@
 package eu.wohlben.qits.containers.control;
 
-import eu.wohlben.qits.containers.control.ContainersDriver.ImageSummary;
+import eu.wohlben.qits.containers.driver.ContainersDriver;
+import eu.wohlben.qits.containers.driver.ContainersDriver.ImageSummary;
+import eu.wohlben.qits.containers.driver.ContainersTimeouts;
+import eu.wohlben.qits.containers.driver.gc.ImageKeepRules;
 import eu.wohlben.qits.containers.entity.CtContainer;
 import eu.wohlben.qits.containers.persistence.CtContainerRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -11,11 +14,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.jboss.logging.Logger;
 
 /**
@@ -53,6 +53,11 @@ import org.jboss.logging.Logger;
  * {@code repository:tag} names any more ({@code <none>} in both columns); it is the common case and
  * it is not a separate rule, because an image kept only by a tag nobody pinned is exactly as
  * collectable.
+ *
+ * <p><b>The decision is qits-containers-driver's {@link ImageKeepRules}</b>, so a runner embedding the
+ * driver keeps and removes by exactly these rules. This class reads the host and the rows, hands
+ * the live-row images over as {@link ImageKeepRules.Inputs#protectedRefs}, and maps the verdicts
+ * onto the reason strings below, which are the {@code /gc} answer's.
  *
  * <p><b>Matching is deliberately generous in the keeping direction.</b> A reference matches an
  * image when it equals one of its tags, when either side is the other with a registry host in
@@ -93,12 +98,6 @@ public class ImageGc {
   /** Removed: tagged, and nothing above kept it. */
   public static final String UNPINNED = "unpinned";
 
-  /** How a hex image id appears inside a reference, whichever shape docker printed it in. */
-  private static final Pattern HEX_ID = Pattern.compile("(?:^|@|sha256:)([0-9a-f]{12,64})$");
-
-  /** The shortest id prefix a match may be made on. Docker's own short form is twelve. */
-  private static final int SHORT_ID = 12;
-
   /** One image and what was decided about it. */
   public record Outcome(String id, List<String> tags, long sizeBytes, String reason) {}
 
@@ -129,8 +128,8 @@ public class ImageGc {
    */
   public Result sweep(
       boolean dryRun, Duration minAge, List<String> keep, List<String> keepPrefixes) {
-    List<String> pins = clean(keep);
-    List<String> pinPrefixes = clean(keepPrefixes);
+    List<String> pins = ImageKeepRules.clean(keep);
+    List<String> pinPrefixes = ImageKeepRules.clean(keepPrefixes);
     // The protecting listing FIRST, and its throw is not caught: without it there is no safe
     // candidate set to compute, so a docker that will not answer is a run that does not happen.
     Set<String> inUse = new LinkedHashSet<>(driver.listImageReferencesInUse(ContainersTimeouts.GC_LIST));
@@ -140,6 +139,8 @@ public class ImageGc {
         minAge == null || minAge.isZero() || minAge.isNegative()
             ? null
             : clock.instant().minus(minAge);
+    ImageKeepRules.Inputs inputs =
+        new ImageKeepRules.Inputs(inUse, rowImages, pins, pinPrefixes, youngest);
 
     List<Outcome> removed = new ArrayList<>();
     List<Outcome> kept = new ArrayList<>();
@@ -147,12 +148,12 @@ public class ImageGc {
     long bytes = 0;
 
     for (ImageSummary image : images) {
-      String keepReason = whyKeep(image, inUse, rowImages, pins, pinPrefixes, youngest);
+      String keepReason = ImageKeepRules.whyKeep(image, inputs).map(ImageGc::reason).orElse(null);
       if (keepReason != null) {
         kept.add(new Outcome(image.id(), image.tags(), image.sizeBytes(), keepReason));
         continue;
       }
-      String reason = image.tags().isEmpty() ? DANGLING : UNPINNED;
+      String reason = reason(ImageKeepRules.removal(image));
       if (dryRun) {
         removed.add(new Outcome(image.id(), image.tags(), image.sizeBytes(), reason));
         bytes += image.sizeBytes();
@@ -198,27 +199,22 @@ public class ImageGc {
     }
   }
 
-  /** The first rule that says keep, or null for an image nothing spoke for. */
-  private static String whyKeep(
-      ImageSummary image,
-      Set<String> inUse,
-      Set<String> rowImages,
-      List<String> pins,
-      List<String> pinPrefixes,
-      Instant youngest) {
-    if (referencedByAny(image, inUse)) {
-      return IN_USE;
-    }
-    if (referencedByAny(image, rowImages)) {
-      return LIVE_ROW;
-    }
-    if (pinned(image, pins, pinPrefixes)) {
-      return PINNED;
-    }
-    if (youngest != null && image.createdAt() != null && image.createdAt().isAfter(youngest)) {
-      return TOO_YOUNG;
-    }
-    return null;
+  /** A keep rule's verdict, as the reason string the {@code /gc} answer carries. */
+  private static String reason(ImageKeepRules.Keep keep) {
+    return switch (keep) {
+      case IN_USE -> ImageGc.IN_USE;
+      case PROTECTED -> ImageGc.LIVE_ROW;
+      case PINNED -> ImageGc.PINNED;
+      case TOO_YOUNG -> ImageGc.TOO_YOUNG;
+    };
+  }
+
+  /** A removal's verdict, as the reason string the {@code /gc} answer carries. */
+  private static String reason(ImageKeepRules.Removal removal) {
+    return switch (removal) {
+      case DANGLING -> ImageGc.DANGLING;
+      case UNPINNED -> ImageGc.UNPINNED;
+    };
   }
 
   /** Every image a live row names. Read in one retried bracket; a failure fails the whole call. */
@@ -236,86 +232,5 @@ public class ImageGc {
 
   private static String imageOf(CtContainer row) {
     return row.image == null || row.image.isBlank() ? null : row.image.strip();
-  }
-
-  /** Whether any of these references names this image — see the class javadoc on tolerance. */
-  static boolean referencedByAny(ImageSummary image, Set<String> references) {
-    for (String reference : references) {
-      if (references(image, reference)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * One reference against one image: a tag, a tag under a registry host, or a hex id prefix.
-   *
-   * <p>The two suffix forms are both here because a reference and a local tag disagree about the
-   * registry host in either direction — a row asking for {@code qits/qits-ci:sha} names an image
-   * tagged {@code registry:8080/qits/qits-ci:sha}, and a container created from the long form names
-   * one tagged with the short.
-   */
-  static boolean references(ImageSummary image, String reference) {
-    String ref = reference == null ? "" : reference.strip();
-    if (ref.isEmpty()) {
-      return false;
-    }
-    for (String tag : image.tags()) {
-      if (tag.equals(ref) || tag.endsWith("/" + ref) || ref.endsWith("/" + tag)) {
-        return true;
-      }
-    }
-    return idMatches(image.id(), ref);
-  }
-
-  /** Whether a reference carries a hex id this image's id starts with. */
-  private static boolean idMatches(String id, String reference) {
-    Matcher matcher = HEX_ID.matcher(reference.toLowerCase(Locale.ROOT));
-    if (!matcher.find()) {
-      return false;
-    }
-    String hex = matcher.group(1);
-    String own = hexOf(id);
-    return hex.length() >= SHORT_ID && !own.isEmpty() && own.startsWith(hex);
-  }
-
-  /** An id with any {@code sha256:} in front of it taken off. */
-  private static String hexOf(String id) {
-    String value = id == null ? "" : id.strip().toLowerCase(Locale.ROOT);
-    int colon = value.lastIndexOf(':');
-    return colon < 0 ? value : value.substring(colon + 1);
-  }
-
-  /**
-   * Whether the caller pinned this image.
-   *
-   * <p>An exact entry matches a tag equal to it or ending in {@code /} plus it, and a
-   * {@code sha256:} entry matches the id. A prefix entry matches a tag that starts with it, or a
-   * tag whose part after any {@code /} does — which is what lets {@code qits/build-images/} pin
-   * everything under a registry host nobody wants to spell.
-   */
-  static boolean pinned(ImageSummary image, List<String> keep, List<String> keepPrefixes) {
-    for (String entry : keep) {
-      if (references(image, entry)) {
-        return true;
-      }
-    }
-    for (String prefix : keepPrefixes) {
-      for (String tag : image.tags()) {
-        if (tag.startsWith(prefix) || tag.contains("/" + prefix)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  /** A caller's list, with the nulls and the blanks it may have sent taken out. */
-  private static List<String> clean(List<String> values) {
-    if (values == null) {
-      return List.of();
-    }
-    return values.stream().filter(Objects::nonNull).map(String::strip).filter(v -> !v.isEmpty()).toList();
   }
 }

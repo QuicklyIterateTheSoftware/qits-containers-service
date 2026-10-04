@@ -3,16 +3,16 @@ package eu.wohlben.qits.containers.control;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import eu.wohlben.qits.containers.driver.spec.LifecyclePolicy;
 import eu.wohlben.qits.containers.entity.CtContainer;
 import eu.wohlben.qits.containers.entity.DesiredState;
 import eu.wohlben.qits.containers.entity.ObservedState;
-import eu.wohlben.qits.containers.spec.LifecyclePolicy;
 import eu.wohlben.qits.eventstream.CausationScope;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import java.time.Instant;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /**

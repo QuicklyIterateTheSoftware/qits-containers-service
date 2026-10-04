@@ -1,11 +1,12 @@
 package eu.wohlben.qits.containers.control;
 
-import eu.wohlben.qits.containers.control.ContainersDriver.CacheResult;
-import eu.wohlben.qits.containers.control.ContainersDriver.ImageSummary;
-import eu.wohlben.qits.containers.control.ContainersDriver.VolumeDetail;
-import eu.wohlben.qits.containers.spec.ContainerSpec;
-import eu.wohlben.qits.containers.spec.LifecyclePolicy;
-import eu.wohlben.qits.containers.spec.VolumeSpec;
+import eu.wohlben.qits.containers.driver.ContainersDriver;
+import eu.wohlben.qits.containers.driver.ContainersDriver.CacheResult;
+import eu.wohlben.qits.containers.driver.ContainersDriver.ImageSummary;
+import eu.wohlben.qits.containers.driver.ContainersDriver.VolumeDetail;
+import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
+import eu.wohlben.qits.containers.driver.spec.LifecyclePolicy;
+import eu.wohlben.qits.containers.driver.spec.VolumeSpec;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -277,7 +278,7 @@ public class FakeContainersDriver implements ContainersDriver {
       Duration timeout) {
     refuseIfDown("run buildkitd");
     calls.add("runBuildkitd:" + image);
-    String name = eu.wohlben.qits.containers.spec.ContainersIdentifiers.PLATFORM_BUILDER;
+    String name = eu.wohlben.qits.containers.driver.spec.ContainersIdentifiers.PLATFORM_BUILDER;
     Observed taken = containers.get(name);
     if (taken != null) {
       // Same refusal shape as run(): the name is the state, whatever the script says.
