@@ -1,16 +1,26 @@
 # qits-containers
 
 The platform's container orchestrator: one service that starts, stops and remembers every container
-the platform runs for itself — **workspaces, project agent containers and refinements.** CI steps are
-not among them: every step runs on a `qits-ci-runner` host now, with its own docker and its own
-buildkitd, and never through this service (see "qits-ci's pipeline steps are no longer a fifth"
-below).
+the platform runs for itself. Two callers come here since epic qits-628 split regular workspaces off
+onto their own runners:
 
-Four modules shell out to the docker CLI today — qits-workspaces' workspaces, qits-projects'
-refinement agents, and two more — each with its own registry, its own labels, and its own answer to
-what happens to a running container when the module restarts. This service is the one place that
-answers: **a durable row is written before the container is started, a restart adopts what is still
-running, and no code path removes a container that no row names.**
+- **qits-workspaces**, for an **admin workspace** — the one live caller of `PlatformBuildkit`'s
+  host-socket hand-out — and for the **editor workspace** (`qits-ws-editor-editor`, with
+  `IDLE_STOP` when `qits.editor.idle-stop-after` is set); owner `dev-qits-workspaces`, workload
+  `workspace`. A regular workspace runs on a workspace runner (`qits-workspaces-runner-daemon`)
+  instead and no longer comes here: qits-workspaces refuses a direct placement for one, and its
+  database forbids one too (`ck_workspace_direct_only_admin_editor`).
+- **qits-projects**, for project agent containers / front desks and for refinements.
+
+CI steps are not among them: every step runs on a `qits-ci-runner` host now, with its own docker and
+its own buildkitd, and never through this service (see "qits-ci's pipeline steps are no longer a
+fifth" below).
+
+Four modules shelled out to the docker CLI before this service existed — qits-workspaces' workspaces,
+qits-projects' refinement agents, and two more — each with its own registry, its own labels, and its
+own answer to what happens to a running container when the module restarts. This service is the one
+place that answers: **a durable row is written before the container is started, a restart adopts what
+is still running, and no code path removes a container that no row names.**
 
 **qits-ci's pipeline steps are no longer a fifth.** They used to run through this service's `ci-step`
 workload; now `qits.ci.in-process-executor.enabled=false` (epic qits-443) and every step is started
@@ -357,8 +367,13 @@ a body that forgot the field **is** a dry run.
 
 ## What is deliberately *not* here yet
 
-- **The consumers.** qits-ci, qits-workspaces and qits-projects still run their own containers; the
-  point of this service is that they stop, one at a time.
+- **Retiring this service.** Its callers today are qits-workspaces' admin workspace and editor
+  workspace and qits-projects' project agent containers / front desks and refinements (epic qits-628);
+  a regular workspace and every CI step bypass it entirely now, on their own runners. Taking it out of
+  the estate altogether is a later campaign of its own — its API, its client jar and the published
+  `qits-containers-client`, and the label namespace are all unchanged until then. The front desks are
+  the next piece to leave: qits-767 (campaign qits-768) moves them off, and qits-workspaces' and
+  qits-projects' other callers stay as they are.
 
 ## Deploying it
 
