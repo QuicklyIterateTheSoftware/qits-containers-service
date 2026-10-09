@@ -107,7 +107,7 @@
              that holds a docker socket embeds the same code this service runs (qits-623). A bump
              here must keep core's SpecFingerprintGoldenTest green: the spec types decide every
              stored spec_hash. -->
-        <qits.containers-driver.version>2026.1004.204507</qits.containers-driver.version>
+        <qits.containers-driver.version>2026.1009.100140</qits.containers-driver.version>
 
         <qits.maven.repository.url>https://registry.qits.wohlben.eu/artifacts/maven/maven</qits.maven.repository.url>
 
