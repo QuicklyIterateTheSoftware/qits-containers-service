@@ -76,7 +76,9 @@ public class GcResource {
   @GET
   @jakarta.annotation.security.RolesAllowed({"qits:system", "qits:agent"})
   @Path("/usage")
-  @Operation(summary = "What the host's images, containers, volumes and build cache hold")
+  @Operation(
+      operationId = "getGcUsage",
+      summary = "What the host's images, containers, volumes and build cache hold")
   @APIResponse(responseCode = "200", description = "The four stores, as docker reports them")
   public UsageResponse usage() {
     ContainersDriver.DiskUsage df = usage.read();
@@ -88,7 +90,9 @@ public class GcResource {
   @POST
   @Path("/images")
   @Consumes(MediaType.APPLICATION_JSON)
-  @Operation(summary = "Collect images nothing is using, nothing names and nobody pinned")
+  @Operation(
+      operationId = "collectImages",
+      summary = "Collect images nothing is using, nothing names and nobody pinned")
   @APIResponse(responseCode = "200", description = "What was removed, kept and refused")
   @APIResponse(responseCode = "400", description = "A minAge that is not an ISO 8601 duration")
   public ImageGcResponse images(ImageGcRequest request) {
@@ -115,7 +119,9 @@ public class GcResource {
   @POST
   @Path("/volumes")
   @Consumes(MediaType.APPLICATION_JSON)
-  @Operation(summary = "Collect dangling volumes this platform can account for")
+  @Operation(
+      operationId = "collectVolumes",
+      summary = "Collect dangling volumes this platform can account for")
   @APIResponse(responseCode = "200", description = "What was removed, kept and refused")
   @APIResponse(responseCode = "400", description = "A minAge that is not an ISO 8601 duration")
   public VolumeGcResponse volumes(VolumeGcRequest request) {
@@ -135,7 +141,9 @@ public class GcResource {
   @POST
   @Path("/build-cache")
   @Consumes(MediaType.APPLICATION_JSON)
-  @Operation(summary = "Prune the build caches down to a keep-storage")
+  @Operation(
+      operationId = "pruneBuildCache",
+      summary = "Prune the build caches down to a keep-storage")
   @APIResponse(responseCode = "200", description = "The host's cache, then one row per builder")
   @APIResponse(responseCode = "400", description = "A real prune with no keepStorageBytes")
   // builderKeepStorageBytes is optional and defaults to keepStorageBytes — see the wire record.

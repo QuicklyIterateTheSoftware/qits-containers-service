@@ -101,7 +101,9 @@ public class ContainersResource {
   // @Consumes is on this method rather than on the class: it is the only route that reads a body,
   // and a class-level one would answer 415 to a stop, a touch or a delete that carries none.
   @Consumes(MediaType.APPLICATION_JSON)
-  @Operation(summary = "Put a container at this place, or confirm the one already there")
+  @Operation(
+      operationId = "ensureContainer",
+      summary = "Put a container at this place, or confirm the one already there")
   @APIResponse(responseCode = "200", description = "The place, as it stands now")
   @APIResponse(responseCode = "201", description = "The place was new")
   @APIResponse(responseCode = "400", description = "A value this service will not put in an argv")
@@ -152,7 +154,7 @@ public class ContainersResource {
   @GET
   @jakarta.annotation.security.RolesAllowed({"qits:system", "qits:agent"})
   @Path("/{owner}/{workload}/{ref}")
-  @Operation(summary = "What is at this place")
+  @Operation(operationId = "getContainer", summary = "What is at this place")
   @APIResponse(responseCode = "200", description = "The place")
   @APIResponse(responseCode = "404", description = "No row names this place")
   public ContainerEnvelope status(
@@ -167,7 +169,7 @@ public class ContainersResource {
   @GET
   @jakarta.annotation.security.RolesAllowed({"qits:system", "qits:agent"})
   @Path("/{owner}")
-  @Operation(summary = "Every live place of this owner")
+  @Operation(operationId = "listOwnerContainers", summary = "Every live place of this owner")
   public ListResponse listOwner(@PathParam("owner") String owner) {
     guard.require(owner);
     return new ListResponse(registry.list(owner, null).stream().map(this::envelope).toList());
@@ -177,7 +179,9 @@ public class ContainersResource {
   @GET
   @jakarta.annotation.security.RolesAllowed({"qits:system", "qits:agent"})
   @Path("/{owner}/{workload}")
-  @Operation(summary = "Every live place of one of this owner's workloads")
+  @Operation(
+      operationId = "listWorkloadContainers",
+      summary = "Every live place of one of this owner's workloads")
   public ListResponse listWorkload(
       @PathParam("owner") String owner, @PathParam("workload") String workload) {
     guard.require(owner);
@@ -194,7 +198,9 @@ public class ContainersResource {
   @GET
   @jakarta.annotation.security.RolesAllowed({"qits:system", "qits:agent"})
   @Path("/{owner}/{workload}/{ref}/logs")
-  @Operation(summary = "A bounded tail of what this container printed")
+  @Operation(
+      operationId = "getContainerLogs",
+      summary = "A bounded tail of what this container printed")
   @APIResponse(responseCode = "404", description = "No row names this place")
   public LogsResponse logs(
       @PathParam("owner") String owner,
@@ -212,7 +218,7 @@ public class ContainersResource {
   /** Stop what is here, leaving it restartable. */
   @POST
   @Path("/{owner}/{workload}/{ref}/stop")
-  @Operation(summary = "Stop what is here, leaving it restartable")
+  @Operation(operationId = "stopContainer", summary = "Stop what is here, leaving it restartable")
   @APIResponse(responseCode = "404", description = "No row names this place")
   public ContainerEnvelope stop(
       @PathParam("owner") String owner,
@@ -239,7 +245,9 @@ public class ContainersResource {
    */
   @POST
   @Path("/{owner}/{workload}/{ref}/touch")
-  @Operation(summary = "Record that the owner still wants this workload")
+  @Operation(
+      operationId = "touchContainer",
+      summary = "Record that the owner still wants this workload")
   @APIResponse(responseCode = "204", description = "Touched")
   @APIResponse(responseCode = "404", description = "No row names this place")
   public Response touch(
@@ -265,7 +273,9 @@ public class ContainersResource {
    */
   @DELETE
   @Path("/{owner}/{workload}/{ref}")
-  @Operation(summary = "Remove what is here, optionally with its volumes and its last logs")
+  @Operation(
+      operationId = "deleteContainer",
+      summary = "Remove what is here, optionally with its volumes and its last logs")
   @APIResponse(responseCode = "200", description = "It is gone, or it already was")
   public DeleteResponse delete(
       @PathParam("owner") String owner,
@@ -299,7 +309,9 @@ public class ContainersResource {
    */
   @DELETE
   @Path("/{owner}/{workload}")
-  @Operation(summary = "Remove this owner's workloads of this kind created before an instant")
+  @Operation(
+      operationId = "destroyWorkloadContainers",
+      summary = "Remove this owner's workloads of this kind created before an instant")
   @APIResponse(responseCode = "200", description = "One outcome per place")
   @APIResponse(responseCode = "400", description = "createdBefore is missing or unreadable")
   public DestroyAllResponse destroyAll(

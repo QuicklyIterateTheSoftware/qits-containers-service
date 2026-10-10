@@ -41,7 +41,7 @@ public class VolumesResource {
   /** Make sure this owner has this volume. Idempotent — docker's own create is. */
   @PUT
   @Path("/{owner}/{name}")
-  @Operation(summary = "Make sure this owner has this volume")
+  @Operation(operationId = "ensureVolume", summary = "Make sure this owner has this volume")
   @APIResponse(responseCode = "200", description = "The volume, claimed by a row")
   @APIResponse(responseCode = "400", description = "Not a volume name this service will use")
   public VolumeEnvelope ensure(
@@ -56,7 +56,7 @@ public class VolumesResource {
   @GET
   @jakarta.annotation.security.RolesAllowed({"qits:system", "qits:agent"})
   @Path("/{owner}/{name}")
-  @Operation(summary = "The row claiming this volume")
+  @Operation(operationId = "getVolume", summary = "The row claiming this volume")
   @APIResponse(responseCode = "404", description = "This owner claims no volume by that name")
   public VolumeEnvelope status(@PathParam("owner") String owner, @PathParam("name") String name) {
     guard.require(owner);
@@ -78,7 +78,7 @@ public class VolumesResource {
    */
   @DELETE
   @Path("/{owner}/{name}")
-  @Operation(summary = "Take this owner's volume away")
+  @Operation(operationId = "deleteVolume", summary = "Take this owner's volume away")
   @APIResponse(responseCode = "200", description = "It is gone, or it already was")
   public VolumeEnvelope delete(@PathParam("owner") String owner, @PathParam("name") String name) {
     guard.require(owner);
