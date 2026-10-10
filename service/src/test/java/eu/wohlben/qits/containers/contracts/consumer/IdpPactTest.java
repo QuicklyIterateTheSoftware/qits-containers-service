@@ -39,10 +39,14 @@ class IdpPactTest {
 
   static final Trigger STARTUP = Trigger.event("StartupEvent");
 
-  /** The discovery document: the issuer the tenant checks {@code iss} against, and where the keys are. */
+  /**
+   * The discovery document: the issuer the tenant checks {@code iss} against, and where the keys are.
+   * The issuer is bound exactly: a different value fails every token, so its type is not enough.
+   */
   static final GoldenInteraction DISCOVERY =
       GoldenInteraction.of(STARTUP, STATE, "getOpenIdConfiguration")
-          .consumes("issuer", "jwks_uri", "token_endpoint");
+          .consumes("issuer", "jwks_uri", "token_endpoint")
+          .exact("issuer");
 
   /** The JWKS: at least one key, each with what quarkus-oidc needs to build and pick it. */
   static final GoldenInteraction JWKS =

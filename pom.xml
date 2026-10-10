@@ -109,7 +109,7 @@
              test scope and this repository takes nothing else from that newer release yet.
              qits-idp-golden-masters holds what qits-idp-service answers in each provider state.
              Both exact, never a range: a newer recording is a pact change. -->
-        <qits.pact-consumer.version>2026.1010.140259</qits.pact-consumer.version>
+        <qits.pact-consumer.version>2026.1010.141817</qits.pact-consumer.version>
         <qits.idp-golden-masters.version>2026.1010.134259</qits.idp-golden-masters.version>
 
         <!-- The docker layer: the spec types, the label namespace, the argv, the process runner, the

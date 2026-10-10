@@ -176,14 +176,6 @@
         },
         "matchingRules": {
           "body": {
-            "$.issuer": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
             "$.jwks_uri": {
               "combine": "AND",
               "matchers": [
