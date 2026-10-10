@@ -3,6 +3,13 @@ artifacts:
   - { type: maven, name: "eu.wohlben.qits:qits-containers-client", path: client, sbom: client/target/sbom.json }
   - { type: docker, name: qits/qits-containers, sbom: .sbom/sbom.json }
 userflows: qits-containers
+# The provider golden masters (qits-1149): the platform packages `golden-masters/` as
+# `eu.wohlben.qits:qits-containers-golden-masters` and `@qits/containers-golden-masters`, each
+# published only when its content changed. `GoldenMasterRecordingTest` records them. This
+# repository makes no REST call to another qits service, so it declares no pacts of its own.
+contracts:
+  application: qits-containers
+  golden-masters: { from: golden-masters/, packages: [maven, npm] }
 
 # ONE JAR AND AN IMAGE. maven-library's header names this repository as the case that is neither
 # archetype: the image half is java-service's and the jar half is maven-library's, and no recipe
