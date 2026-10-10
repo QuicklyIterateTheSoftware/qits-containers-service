@@ -1,0 +1,26 @@
+{
+  "images": {
+    "count": 12,
+    "active": 4,
+    "sizeBytes": 9000000000,
+    "reclaimableBytes": 3000000000
+  },
+  "containers": {
+    "count": 5,
+    "active": 4,
+    "sizeBytes": 30000000,
+    "reclaimableBytes": 1000000
+  },
+  "volumes": {
+    "count": 6,
+    "active": 3,
+    "sizeBytes": 2000000000,
+    "reclaimableBytes": 500000000
+  },
+  "buildCache": {
+    "count": 40,
+    "active": 0,
+    "sizeBytes": 7000000000,
+    "reclaimableBytes": 2000000000
+  }
+}

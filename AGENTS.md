@@ -373,6 +373,27 @@ failure lands on the consumer's build. `-N` means "do not recurse into `<modules
 produce the mirror-image failure — the parent pom with neither jar. `-pl` is already the selection
 that is wanted.
 
+## The provider contract (qits-1149)
+
+This service is a pact provider. `service/src/test/java/.../contracts/` holds it, copied from
+qits-events-service:
+
+- `ProviderStates` seeds rows and scripts the fake docker host for each named state.
+- `GoldenMasterRecordingTest` calls every operation a consumer uses in its state and records the
+  answer under `golden-masters/`. It compares by default; `-Dgolden.update=true` rewrites. A 204
+  is recorded as `null`.
+- `ConsumerPactVerificationTest` verifies every pinned `pacts/<consumer>_qits-containers-service.json`
+  on the test classpath. None is pinned yet, so it passes empty (`@IgnoreNoPactsToVerify`). When
+  the first consumer pact jar is pinned, drop that annotation and set
+  `ClasspathPactLoader.REQUIRED` to true.
+
+Every resource method carries an `operationId`; a pact names it in `qits-call`. Both tests run under
+`FakeDriverProfile`. `release.yml`'s `contracts:` publishes the golden masters. The expected
+consumers are qits-workspaces-service and qits-projects-service (through `ContainersClient`) and
+qits-orchestrator-service (the `gc` routes).
+
+This service makes no REST call to another qits service, so it has no consumer pact of its own.
+
 ## The userflow catalogue
 
 Thirteen `@UserStory` methods across six `@QuarkusIntegrationTest` classes, all on **one**

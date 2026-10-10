@@ -1,0 +1,10 @@
+{
+  "destroyed": [
+    {
+      "ref": "contract-1",
+      "containerName": "qits-ct-qits-workspaces-editor-contract-1",
+      "removed": true,
+      "detail": null
+    }
+  ]
+}

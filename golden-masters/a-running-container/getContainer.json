@@ -1,0 +1,17 @@
+{
+  "id": "00000000-0000-4000-8000-000000000001",
+  "containerName": "qits-ct-qits-workspaces-editor-contract-1",
+  "state": {
+    "desired": "RUNNING",
+    "observed": "RUNNING"
+  },
+  "endpoint": {
+    "containerName": "qits-ct-qits-workspaces-editor-contract-1",
+    "network": "qits-net",
+    "alias": "qits-ct-qits-workspaces-editor-contract-1",
+    "proxy": null
+  },
+  "specHash": "2ae402e419580049fb5112898e914f9392dba6e6a3e8386d2e6aa92a312d5901",
+  "created": false,
+  "detail": null
+}

@@ -1,0 +1,16 @@
+{
+  "dryRun": false,
+  "host": {
+    "reclaimedBytes": 0,
+    "detail": "Total: 0B",
+    "error": null
+  },
+  "builders": [
+    {
+      "container": "qits-buildkitd",
+      "reclaimedBytes": 0,
+      "detail": "Total: 0B",
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,320 @@
+{
+  "formatVersion": 1,
+  "provider": "qits-containers",
+  "states": [
+    {
+      "name": "a claimed volume",
+      "slug": "a-claimed-volume",
+      "params": {
+        "name": "contract-home",
+        "owner": "qits-workspaces"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "deleteVolume",
+          "method": "DELETE",
+          "path": "/containers/api/volumes/{owner}/{name}",
+          "status": 200,
+          "file": "a-claimed-volume/deleteVolume.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "getVolume",
+          "method": "GET",
+          "path": "/containers/api/volumes/{owner}/{name}",
+          "status": 200,
+          "file": "a-claimed-volume/getVolume.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "a host with reclaimable storage",
+      "slug": "a-host-with-reclaimable-storage",
+      "params": {},
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "collectImages",
+          "method": "POST",
+          "path": "/containers/api/gc/images",
+          "body": {
+            "dryRun": false,
+            "minAge": "PT6H",
+            "keep": [],
+            "keepPrefixes": []
+          },
+          "status": 200,
+          "file": "a-host-with-reclaimable-storage/collectImages.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "collectVolumes",
+          "method": "POST",
+          "path": "/containers/api/gc/volumes",
+          "body": {
+            "dryRun": false,
+            "minAge": "PT6H"
+          },
+          "status": 200,
+          "file": "a-host-with-reclaimable-storage/collectVolumes.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "getGcUsage",
+          "method": "GET",
+          "path": "/containers/api/gc/usage",
+          "status": 200,
+          "file": "a-host-with-reclaimable-storage/getGcUsage.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "pruneBuildCache",
+          "method": "POST",
+          "path": "/containers/api/gc/build-cache",
+          "body": {
+            "dryRun": false,
+            "keepStorageBytes": 10000000000
+          },
+          "status": 200,
+          "file": "a-host-with-reclaimable-storage/pruneBuildCache.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "a running container",
+      "slug": "a-running-container",
+      "params": {
+        "owner": "qits-workspaces",
+        "ref": "contract-1",
+        "workload": "editor"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "deleteContainer",
+          "method": "DELETE",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}",
+          "query": {
+            "logs": "true",
+            "volumes": "true"
+          },
+          "status": 200,
+          "file": "a-running-container/deleteContainer.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "destroyWorkloadContainers",
+          "method": "DELETE",
+          "path": "/containers/api/containers/{owner}/{workload}",
+          "query": {
+            "createdBefore": "2100-01-01T00:00:00Z"
+          },
+          "status": 200,
+          "file": "a-running-container/destroyWorkloadContainers.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "getContainer",
+          "method": "GET",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}",
+          "status": 200,
+          "file": "a-running-container/getContainer.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "getContainerLogs",
+          "method": "GET",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}/logs",
+          "query": {
+            "tail": "50"
+          },
+          "status": 200,
+          "file": "a-running-container/getContainerLogs.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "listOwnerContainers",
+          "method": "GET",
+          "path": "/containers/api/containers/{owner}",
+          "status": 200,
+          "file": "a-running-container/listOwnerContainers.json",
+          "frozen": {
+            "ids": [
+              "$.containers[*].id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "listWorkloadContainers",
+          "method": "GET",
+          "path": "/containers/api/containers/{owner}/{workload}",
+          "status": 200,
+          "file": "a-running-container/listWorkloadContainers.json",
+          "frozen": {
+            "ids": [
+              "$.containers[*].id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "stopContainer",
+          "method": "POST",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}/stop",
+          "status": 200,
+          "file": "a-running-container/stopContainer.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "touchContainer",
+          "method": "POST",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}/touch",
+          "status": 204,
+          "file": "a-running-container/touchContainer.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "no container",
+      "slug": "no-container",
+      "params": {
+        "owner": "qits-workspaces",
+        "ref": "contract-1",
+        "workload": "editor"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "ensureContainer",
+          "method": "PUT",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}",
+          "body": {
+            "spec": {
+              "image": "alpine:3",
+              "network": "qits-net"
+            },
+            "policy": {
+              "type": "EXPLICIT"
+            },
+            "recreate": "never"
+          },
+          "status": 201,
+          "file": "no-container/ensureContainer.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "no volume",
+      "slug": "no-volume",
+      "params": {
+        "name": "contract-home",
+        "owner": "qits-workspaces"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "ensureVolume",
+          "method": "PUT",
+          "path": "/containers/api/volumes/{owner}/{name}",
+          "status": 200,
+          "file": "no-volume/ensureVolume.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    }
+  ]
+}
