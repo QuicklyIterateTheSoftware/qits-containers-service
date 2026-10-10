@@ -56,8 +56,13 @@
           "body": {
             "dryRun": false,
             "minAge": "PT6H",
-            "keep": [],
-            "keepPrefixes": []
+            "keep": [
+              "qits/qits-ci:2026.1001.120000"
+            ],
+            "keepPrefixes": [
+              "qits/build-images/",
+              "qits/graalvmce-musl-builder"
+            ]
           },
           "status": 200,
           "file": "a-host-with-reclaimable-storage/collectImages.json",
@@ -74,7 +79,7 @@
           "path": "/containers/api/gc/volumes",
           "body": {
             "dryRun": false,
-            "minAge": "PT6H"
+            "minAge": "PT24H"
           },
           "status": 200,
           "file": "a-host-with-reclaimable-storage/collectVolumes.json",
@@ -104,7 +109,8 @@
           "path": "/containers/api/gc/build-cache",
           "body": {
             "dryRun": false,
-            "keepStorageBytes": 10000000000
+            "keepStorageBytes": 10737418240,
+            "builderKeepStorageBytes": 1073741824
           },
           "status": 200,
           "file": "a-host-with-reclaimable-storage/pruneBuildCache.json",
@@ -132,8 +138,8 @@
           "method": "DELETE",
           "path": "/containers/api/containers/{owner}/{workload}/{ref}",
           "query": {
-            "logs": "true",
-            "volumes": "true"
+            "logs": "false",
+            "volumes": "false"
           },
           "status": 200,
           "file": "a-running-container/deleteContainer.json",
@@ -264,6 +270,23 @@
       "dependsOn": [],
       "operations": [
         {
+          "operationId": "deleteContainer",
+          "method": "DELETE",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}",
+          "query": {
+            "logs": "false",
+            "volumes": "false"
+          },
+          "status": 200,
+          "file": "no-container/deleteContainer.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
           "operationId": "ensureContainer",
           "method": "PUT",
           "path": "/containers/api/containers/{owner}/{workload}/{ref}",
@@ -287,6 +310,19 @@
             "strings": [],
             "listFilteredTo": null
           }
+        },
+        {
+          "operationId": "getContainer",
+          "method": "GET",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}",
+          "status": 404,
+          "file": "no-container/getContainer.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
         }
       ]
     },
@@ -300,6 +336,19 @@
       "dependsOn": [],
       "operations": [
         {
+          "operationId": "deleteVolume",
+          "method": "DELETE",
+          "path": "/containers/api/volumes/{owner}/{name}",
+          "status": 200,
+          "file": "no-volume/deleteVolume.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
           "operationId": "ensureVolume",
           "method": "PUT",
           "path": "/containers/api/volumes/{owner}/{name}",
@@ -309,6 +358,45 @@
             "ids": [
               "$.id"
             ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "getVolume",
+          "method": "GET",
+          "path": "/containers/api/volumes/{owner}/{name}",
+          "status": 404,
+          "file": "no-volume/getVolume.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "the machine gate is on",
+      "slug": "the-machine-gate-is-on",
+      "params": {
+        "owner": "dev-qits-ci"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "listOwnerContainers",
+          "method": "GET",
+          "path": "/containers/api/containers/{owner}",
+          "headers": {
+            "Authorization": "Bearer not-an-idp-token"
+          },
+          "status": 401,
+          "file": "the-machine-gate-is-on/listOwnerContainers.json",
+          "frozen": {
+            "ids": [],
             "instants": [],
             "strings": [],
             "listFilteredTo": null

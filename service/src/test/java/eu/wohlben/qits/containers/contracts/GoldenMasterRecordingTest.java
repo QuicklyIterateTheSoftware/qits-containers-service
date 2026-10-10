@@ -167,7 +167,17 @@ class GoldenMasterRecordingTest {
               "deleteContainer",
               "DELETE",
               PLACE,
-              Map.of("volumes", "true", "logs", "true"),
+              Map.of("volumes", "false", "logs", "false"),
+              null,
+              200),
+          Interaction.of(
+              ProviderStates.NO_CONTAINER, "getContainer", "GET", PLACE, Map.of(), null, 404),
+          Interaction.of(
+              ProviderStates.NO_CONTAINER,
+              "deleteContainer",
+              "DELETE",
+              PLACE,
+              Map.of("volumes", "false", "logs", "false"),
               null,
               200),
           Interaction.of(
@@ -180,6 +190,9 @@ class GoldenMasterRecordingTest {
               200),
           Interaction.of(
               ProviderStates.NO_VOLUME, "ensureVolume", "PUT", VOLUME, Map.of(), null, 200),
+          Interaction.of(ProviderStates.NO_VOLUME, "getVolume", "GET", VOLUME, Map.of(), null, 404),
+          Interaction.of(
+              ProviderStates.NO_VOLUME, "deleteVolume", "DELETE", VOLUME, Map.of(), null, 200),
           Interaction.of(
               ProviderStates.A_CLAIMED_VOLUME, "getVolume", "GET", VOLUME, Map.of(), null, 200),
           Interaction.of(
@@ -198,7 +211,9 @@ class GoldenMasterRecordingTest {
               "POST",
               "/containers/api/gc/images",
               Map.of(),
-              "{\"dryRun\":false,\"minAge\":\"PT6H\",\"keep\":[],\"keepPrefixes\":[]}",
+              "{\"dryRun\":false,\"minAge\":\"PT6H\",\"keep\":[\""
+                  + ProviderStates.PINNED_TAG
+                  + "\"],\"keepPrefixes\":[\"qits/build-images/\",\"qits/graalvmce-musl-builder\"]}",
               200),
           Interaction.of(
               ProviderStates.A_HOST_WITH_RECLAIMABLE_STORAGE,
@@ -206,7 +221,7 @@ class GoldenMasterRecordingTest {
               "POST",
               "/containers/api/gc/volumes",
               Map.of(),
-              "{\"dryRun\":false,\"minAge\":\"PT6H\"}",
+              "{\"dryRun\":false,\"minAge\":\"PT24H\"}",
               200),
           Interaction.of(
               ProviderStates.A_HOST_WITH_RECLAIMABLE_STORAGE,
@@ -214,8 +229,27 @@ class GoldenMasterRecordingTest {
               "POST",
               "/containers/api/gc/build-cache",
               Map.of(),
-              "{\"dryRun\":false,\"keepStorageBytes\":10000000000}",
-              200));
+              "{\"dryRun\":false,\"keepStorageBytes\":10737418240,"
+                  + "\"builderKeepStorageBytes\":1073741824}",
+              200),
+          // Recorded by GatedGoldenMasterRecordingTest: only a gated application answers 401.
+          Interaction.of(
+              ProviderStates.THE_MACHINE_GATE_IS_ON,
+              "listOwnerContainers",
+              "GET",
+              "/containers/api/containers/{owner}",
+              Map.of(),
+              null,
+              401));
+
+  /** The headers a gated interaction sends: a bearer no idp issued. */
+  static final Map<String, String> GATED_HEADERS =
+      Map.of("Authorization", "Bearer not-an-idp-token");
+
+  /** Whether {@link GatedGoldenMasterRecordingTest} records this interaction instead of this test. */
+  static boolean gated(Interaction interaction) {
+    return ProviderStates.GATED.contains(interaction.state());
+  }
 
   private static final ObjectMapper JSON = new ObjectMapper();
   private static final Pattern TEMPLATE_PARAM = Pattern.compile("\\{([^}]+)}");
@@ -234,7 +268,8 @@ class GoldenMasterRecordingTest {
     Map<String, Map<String, ObjectNode>> indexOperations = new TreeMap<>();
 
     for (Interaction interaction : INTERACTIONS) {
-      Recorded recorded = record(interaction);
+      // A gated answer is checked by the gated test; here only its index entry is built.
+      Recorded recorded = gated(interaction) ? recordGated(interaction) : record(interaction);
       String slug = ProviderStates.slug(interaction.state());
       String file = slug + "/" + interaction.operationId() + ".json";
 
@@ -258,6 +293,10 @@ class GoldenMasterRecordingTest {
         ObjectNode query = operation.putObject("query");
         new TreeMap<>(interaction.query()).forEach(query::put);
       }
+      if (gated(interaction)) {
+        ObjectNode headers = operation.putObject("headers");
+        new TreeMap<>(GATED_HEADERS).forEach(headers::put);
+      }
       if (interaction.requestBody() != null) {
         operation.set("body", JSON.readTree(interaction.requestBody()));
       }
@@ -280,7 +319,9 @@ class GoldenMasterRecordingTest {
       }
 
       written.add(file);
-      check(dir.resolve(file), GoldenJson.render(recorded.body()), update, failures);
+      if (!gated(interaction)) {
+        check(dir.resolve(file), GoldenJson.render(recorded.body()), update, failures);
+      }
     }
 
     ObjectNode index = JsonNodeFactory.instance.objectNode();
@@ -334,10 +375,23 @@ class GoldenMasterRecordingTest {
     }
   }
 
-  private Recorded recordIn(Interaction interaction, ProviderStates.Setup setup) throws IOException {
+  /** A gated interaction's index entry: its state's params, and the 401's empty answer. */
+  private Recorded recordGated(Interaction interaction) {
+    ProviderStates.Setup setup = states.setUp(interaction.state());
+    try {
+      return frozen(JsonNodeFactory.instance.nullNode(), interaction, setup);
+    } finally {
+      states.cleanUp();
+    }
+  }
+
+  /** Calls the interaction against the running application, in a state already set up. */
+  static Recorded call(
+      Interaction interaction, ProviderStates.Setup setup, Map<String, String> headers)
+      throws IOException {
     Map<String, String> params = setup.params();
 
-    var request = given().queryParams(interaction.query());
+    var request = given().headers(headers).queryParams(interaction.query());
     if (interaction.requestBody() != null) {
       request = request.contentType("application/json").body(interaction.requestBody());
     }
@@ -358,8 +412,18 @@ class GoldenMasterRecordingTest {
               + ": "
               + raw);
     }
-    // A 204 has no body; it is recorded as JSON null, so every operation has a file.
+    // A 204 or a 401 has no body; it is recorded as JSON null, so every operation has a file.
     JsonNode body = raw.isBlank() ? JsonNodeFactory.instance.nullNode() : JSON.readTree(raw);
+    return frozen(body, interaction, setup);
+  }
+
+  private Recorded recordIn(Interaction interaction, ProviderStates.Setup setup) throws IOException {
+    return call(interaction, setup, Map.of());
+  }
+
+  /** The answer reduced and frozen, with the state's params frozen the same way. */
+  static Recorded frozen(JsonNode body, Interaction interaction, ProviderStates.Setup setup) {
+    Map<String, String> params = setup.params();
     if (body.isObject()) {
       interaction.dropped().forEach(((ObjectNode) body)::remove);
     }

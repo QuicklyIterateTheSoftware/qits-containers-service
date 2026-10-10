@@ -1,15 +1,32 @@
 {
   "dryRun": false,
-  "examined": 1,
-  "bytesReclaimed": 90000000,
+  "examined": 3,
+  "bytesReclaimed": 490000000,
   "removed": [
     {
       "id": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
       "tags": [],
       "sizeBytes": 90000000,
       "reason": "dangling"
+    },
+    {
+      "id": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "tags": [
+        "qits/qits-ci:2026.901.120000"
+      ],
+      "sizeBytes": 400000000,
+      "reason": "unpinned"
     }
   ],
-  "kept": [],
+  "kept": [
+    {
+      "id": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "tags": [
+        "qits/qits-ci:2026.1001.120000"
+      ],
+      "sizeBytes": 410000000,
+      "reason": "pinned"
+    }
+  ],
   "failed": []
 }

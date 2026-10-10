@@ -11,6 +11,7 @@ import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvide
 import au.com.dius.pact.provider.junitsupport.IgnoreNoPactsToVerify;
 import au.com.dius.pact.provider.junitsupport.Provider;
 import au.com.dius.pact.provider.junitsupport.State;
+import au.com.dius.pact.provider.junitsupport.loader.PactFilter;
 import au.com.dius.pact.provider.junitsupport.loader.PactSource;
 import eu.wohlben.qits.containers.api.FakeDriverProfile;
 import io.quarkus.test.common.http.TestHTTPResource;
@@ -42,11 +43,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * {@code %test} synthetic user — exactly as {@link GoldenMasterRecordingTest}'s calls run. Every
  * {@code @State} method delegates to {@link ProviderStates}; {@link #target} fails an unknown state,
  * and an interaction without {@code comments.references.qits-call} or {@code qits-trigger}.
+ *
+ * <p>The gated states ({@link ProviderStates#GATED}) are filtered out here: this application runs
+ * with the dev user, so it never answers 401. {@link GatedConsumerPactVerificationTest} verifies
+ * them. An interaction must name a provider state to be verified at all.
  */
 @QuarkusTest
 @TestProfile(FakeDriverProfile.class)
 @Provider(ConsumerPactVerificationTest.PROVIDER)
 @PactSource(ClasspathPactLoader.class)
+@PactFilter(ProviderStates.UNGATED_STATES)
 @IgnoreNoPactsToVerify
 class ConsumerPactVerificationTest {
 

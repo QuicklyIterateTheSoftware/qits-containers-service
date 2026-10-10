@@ -1,6 +1,16 @@
 {
   "dryRun": false,
-  "removed": [],
-  "kept": [],
+  "removed": [
+    {
+      "name": "ws-data-orphan",
+      "reason": "managed-no-row"
+    }
+  ],
+  "kept": [
+    {
+      "name": "somebody-elses",
+      "reason": "unmanaged"
+    }
+  ],
   "failed": []
 }

@@ -1,8 +1,8 @@
 {
   "dryRun": false,
   "host": {
-    "reclaimedBytes": 0,
-    "detail": "Total: 0B",
+    "reclaimedBytes": 2000000000,
+    "detail": "Total: 2GB",
     "error": null
   },
   "builders": [
@@ -10,6 +10,12 @@
       "container": "qits-buildkitd",
       "reclaimedBytes": 0,
       "detail": "Total: 0B",
+      "error": null
+    },
+    {
+      "container": "buildx_buildkit_qits-bootstrap-builder-v40",
+      "reclaimedBytes": 1500000000,
+      "detail": "Total: 1.5GB",
       "error": null
     }
   ]
