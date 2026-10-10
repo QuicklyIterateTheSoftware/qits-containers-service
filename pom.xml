@@ -104,6 +104,14 @@
              release the mock idp arrived in. -->
         <qits.service-mock.version>2026.1002.70617</qits.service-mock.version>
 
+        <!-- The consumer pacts (qits-1149). qits-pact-consumer is the shared golden-master reader,
+             released out of the same qits-integrations-quarkus train but pinned on its own: it is
+             test scope and this repository takes nothing else from that newer release yet.
+             qits-idp-golden-masters holds what qits-idp-service answers in each provider state.
+             Both exact, never a range: a newer recording is a pact change. -->
+        <qits.pact-consumer.version>2026.1010.140259</qits.pact-consumer.version>
+        <qits.idp-golden-masters.version>2026.1010.134259</qits.idp-golden-masters.version>
+
         <!-- The docker layer: the spec types, the label namespace, the argv, the process runner, the
              driver and the pure GC decisions, released out of qits-containers-javalib
              (eu.wohlben.qits.containers.driver). Plain Java with jboss-logging alone, so a runner
@@ -165,6 +173,25 @@
                 <groupId>au.com.dius.pact.provider</groupId>
                 <artifactId>junit5</artifactId>
                 <version>${pact.version}</version>
+            </dependency>
+            <dependency>
+                <!-- Test scope at every declaration site: the consumer half, at the version the
+                     provider half verifies with. -->
+                <groupId>au.com.dius.pact.consumer</groupId>
+                <artifactId>junit5</artifactId>
+                <version>${pact.version}</version>
+            </dependency>
+            <dependency>
+                <!-- Test scope at every declaration site. -->
+                <groupId>${project.groupId}</groupId>
+                <artifactId>qits-pact-consumer</artifactId>
+                <version>${qits.pact-consumer.version}</version>
+            </dependency>
+            <dependency>
+                <!-- Test scope at every declaration site: recordings a test reads, never code. -->
+                <groupId>${project.groupId}</groupId>
+                <artifactId>qits-idp-golden-masters</artifactId>
+                <version>${qits.idp-golden-masters.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.zonky.test</groupId>

@@ -5,11 +5,14 @@ artifacts:
 userflows: qits-containers
 # The provider golden masters (qits-1149): the platform packages `golden-masters/` as
 # `eu.wohlben.qits:qits-containers-golden-masters` and `@qits/containers-golden-masters`, each
-# published only when its content changed. `GoldenMasterRecordingTest` records them. This
-# repository makes no REST call to another qits service, so it declares no pacts of its own.
+# published only when its content changed. `GoldenMasterRecordingTest` records them. Its one
+# consumer pact, pacts/qits-containers-service_qits-idp-service.json (quarkus-oidc's discovery and
+# JWKS reads), is published for qits-idp-service to verify; `IdpPactTest` writes it.
 contracts:
   application: qits-containers
   golden-masters: { from: golden-masters/, packages: [maven, npm] }
+  pacts:
+    qits-idp-service: { packages: [maven] }
 
 # ONE JAR AND AN IMAGE. maven-library's header names this repository as the case that is neither
 # archetype: the image half is java-service's and the jar half is maven-library's, and no recipe

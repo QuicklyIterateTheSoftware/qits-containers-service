@@ -171,12 +171,30 @@
         </dependency>
         <dependency>
             <!-- The recording service mocks. The IT points quarkus.oidc at idp.MockIdp — a
-                 MockService plus key material: it serves the JWKS for a generated keypair, mints
+                 MockService plus key material: it serves the discovery document and the JWKS for a
+                 generated keypair, mints
                  tokens, records what it answered — the far end of the story's interactions. It is
                  an in-process HTTP listener rather than a container, like everything else this
                  suite stands up. -->
             <groupId>${project.groupId}</groupId>
             <artifactId>qits-service-mock</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- The consumer pacts against qits-idp-service: the shared reader, and the provider's
+                 recorded answers it reads (contracts/IdpPactTest). -->
+            <groupId>${project.groupId}</groupId>
+            <artifactId>qits-pact-consumer</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>au.com.dius.pact.consumer</groupId>
+            <artifactId>junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>qits-idp-golden-masters</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

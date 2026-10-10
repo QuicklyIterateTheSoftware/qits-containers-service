@@ -392,7 +392,11 @@ Every resource method carries an `operationId`; a pact names it in `qits-call`. 
 consumers are qits-workspaces-service and qits-projects-service (through `ContainersClient`) and
 qits-orchestrator-service (the `gc` routes).
 
-This service makes no REST call to another qits service, so it has no consumer pact of its own.
+Its one consumer pact is `pacts/qits-containers-service_qits-idp-service.json`: the two reads
+quarkus-oidc makes at startup when the machine-auth gate is on (`getOpenIdConfiguration`, then
+`getJwks`), in qits-idp's state `a published signing key`. `contracts/consumer/IdpPactTest` builds
+it from `qits-idp-golden-masters` with `qits-pact-consumer` and runs each row against a pact mock;
+`-Dgolden.update=true` rewrites the file. `release.yml`'s `contracts: pacts:` publishes it.
 
 ## The userflow catalogue
 
@@ -412,11 +416,11 @@ Thirteen `@UserStory` methods across six `@QuarkusIntegrationTest` classes, all 
 **`api/TokenValidationBootstrapIT` is still the one that boots the tenant.** It runs the **packaged**
 fast-jar with the **machine-auth gate on** — `qits.auth.machine.required=true`, which is what
 `quarkus.oidc.tenant-enabled` is spelled in terms of — against
-`eu.wohlben.qits.servicemock.idp.MockIdp`, a recording stand-in for qits-platform-idp that serves a
-real JWKS for a generated keypair and mints RS256 bearers signed by it. That combination is the gap
+`eu.wohlben.qits.servicemock.idp.MockIdp`, a recording stand-in for qits-idp that serves a
+discovery document and a real JWKS for a generated keypair and mints RS256 bearers signed by it. That combination is the gap
 `MachineGuardTest` leaves: that test flips the same gate but inlines `quarkus.oidc.public-key` and
-clears `auth-server-url`, so the shipped `auth-server-url` + `discovery-enabled=false` +
-`jwks-path=jwks` trio — a real fetch over a real listener, at startup, before any caller arrives —
+clears `auth-server-url`, so the shipped `auth-server-url` with discovery — the discovery document
+and the JWKS its `jwks_uri` names, real fetches over a real listener, at startup, before any caller arrives —
 is exercised nowhere else. Its denied story carries the claim no sibling repo's copy can: after the
 401s for an unknown key and a foreign audience, an **impeccable token that is another module's** is
 refused 403 on this owner's rows and served 200 on its own.
