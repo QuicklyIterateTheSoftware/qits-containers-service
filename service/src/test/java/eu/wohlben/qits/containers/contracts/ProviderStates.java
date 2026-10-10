@@ -55,9 +55,6 @@ public class ProviderStates {
   /** States only a gated application can answer for. */
   public static final Set<String> GATED = Set.of(THE_MACHINE_GATE_IS_ON);
 
-  /** A {@code @PactFilter} regex matching every state except the gated ones. */
-  public static final String UNGATED_STATES = "^(?!" + THE_MACHINE_GATE_IS_ON + "$).*";
-
   static final String OWNER = "qits-workspaces";
   static final String WORKLOAD = "editor";
   static final String REF = "contract-1";

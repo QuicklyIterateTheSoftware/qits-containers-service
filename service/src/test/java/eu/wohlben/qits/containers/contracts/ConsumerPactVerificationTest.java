@@ -46,13 +46,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
  *
  * <p>The gated states ({@link ProviderStates#GATED}) are filtered out here: this application runs
  * with the dev user, so it never answers 401. {@link GatedConsumerPactVerificationTest} verifies
- * them. An interaction must name a provider state to be verified at all.
+ * them. {@link ExcludeStatesFilter} keeps an interaction that names no state, and {@link #target}
+ * fails it: every interaction must name a provider state.
  */
 @QuarkusTest
 @TestProfile(FakeDriverProfile.class)
 @Provider(ConsumerPactVerificationTest.PROVIDER)
 @PactSource(ClasspathPactLoader.class)
-@PactFilter(ProviderStates.UNGATED_STATES)
+@PactFilter(value = ProviderStates.THE_MACHINE_GATE_IS_ON, filter = ExcludeStatesFilter.class)
 @IgnoreNoPactsToVerify
 class ConsumerPactVerificationTest {
 
@@ -75,6 +76,15 @@ class ConsumerPactVerificationTest {
       return; // no pact to verify: @IgnoreNoPactsToVerify's single empty run
     }
     String consumer = pact.getConsumer().getName();
+    if (interaction.getProviderStates().isEmpty()) {
+      fail(
+          "Consumer '"
+              + consumer
+              + "' interaction '"
+              + interaction.getDescription()
+              + "' names no provider state — every interaction must name one of "
+              + states.names());
+    }
     for (ProviderState state : interaction.getProviderStates()) {
       if (!states.names().contains(state.getName())) {
         fail(
