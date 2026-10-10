@@ -13,7 +13,7 @@ import io.restassured.specification.RequestSpecification;
  * door that does not exist — it would be refused 401 like any other anonymous request.
  *
  * <p><b>The guard is two halves and both matter to a story.</b> The outer one is {@code
- * @RolesAllowed("qits:system")}, the fleet's coarse machine role, which qits-platform-idp copies
+ * @RolesAllowed("qits:system")}, the fleet's coarse machine role, which qits-idp copies
  * from a client's granted roles into the token's {@code groups} claim and quarkus-oidc reads as
  * roles with no configuration at all. The inner one is {@code api/OwnerGuard}: the owner in the path
  * compared against the token's <b>subject, whole</b>. So a token is not merely valid or invalid here

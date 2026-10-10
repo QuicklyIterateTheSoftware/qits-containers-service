@@ -33,8 +33,8 @@ import org.junit.jupiter.api.TestMethodOrder;
  * every suite in this repository leaves that gate shut except {@link MachineGuardTest}, which flips
  * it and then stops exactly where this one starts — it inlines {@code quarkus.oidc.public-key} and
  * clears {@code auth-server-url}, so nothing there ever fetches a key. The block this service
- * actually deploys with (auth-server-url plus {@code discovery-enabled=false} and
- * {@code jwks-path=jwks} joined onto it, {@code token.audience=qits-platform}, the {@code groups}
+ * actually deploys with (auth-server-url, discovery of the JWKS address from
+ * {@code /.well-known/openid-configuration}, {@code token.audience=qits-platform}, the {@code groups}
  * claim becoming roles) is therefore exercised nowhere else. The far side is {@link MockIdp}, whose recordings make the interaction
  * assertable on <b>both ends</b>.
  *
@@ -175,7 +175,7 @@ public class TokenValidationBootstrapIT {
       // directly would prove the tenant and skip the seam.
       overrides.put("qits.auth.machine.required", "true");
       // The one seam this test MOVES: where the idp is. A runtime key, so the packaged artifact is
-      // otherwise exactly what ships — discovery stays off and `jwks-path=jwks` is joined onto it.
+      // otherwise exactly what ships — discovery reads the mock's document and follows its jwks_uri.
       overrides.put("quarkus.oidc.auth-server-url", idp.baseUrl());
 
       // --- THE DOCKER SEAM, POINTED AT A RECORDING STAND-IN ---------------------------------------
@@ -275,8 +275,8 @@ public class TokenValidationBootstrapIT {
   @UserStoryDescription(
       """
       A freshly deployed qits-containers must validate service bearers before any caller arrives:
-      at startup it fetches the signing keys (JWKS) from qits-platform-idp — discovery stays off,
-      the path is configured — so the very first machine request is judged on the platform's own
+      at startup it reads qits-idp's discovery document and fetches the signing keys (JWKS) its
+      jwks_uri names, so the very first machine request is judged on the platform's own
       keys. Nothing here is read by a person, so this is the only door there is: qits-ci,
       qits-workspaces and qits-projects reach their containers through it and through nothing else.
       """)
@@ -285,7 +285,7 @@ public class TokenValidationBootstrapIT {
     MockIdp idp = MockIdp.attach();
 
     story.note(
-        "qits-containers starts with the OIDC tenant on, beside a reachable qits-platform-idp");
+        "qits-containers starts with the OIDC tenant on, beside a reachable qits-idp");
     given().get("/containers/q/health/ready").then().statusCode(200);
 
     // End (a), the idp side: the JWKS was served during startup — before this story presented any
@@ -293,6 +293,10 @@ public class TokenValidationBootstrapIT {
     // first bearer, would look identical from this end and fail its first caller after a restart —
     // which is what quarkus.oidc.connection-delay=30S exists to prevent, and it matters here more
     // than most: an orchestrator is restarted precisely when the platform is being repaired.
+    assertTrue(
+        idp.recordedRequests().stream()
+            .anyMatch(r -> "/idp/.well-known/openid-configuration".equals(r.path())),
+        "the packaged service never read the discovery document at startup");
     assertTrue(
         idp.recordedRequests().stream().anyMatch(r -> "/idp/jwks".equals(r.path())),
         "the packaged service never fetched /idp/jwks at startup");
@@ -439,6 +443,13 @@ public class TokenValidationBootstrapIT {
     // because it is the first one that ran (see the class javadoc on ordering).
     ReportAssertions.assertEdge(
         CATEGORY, ACCEPTED_SLUG, "http", SERVICE, MockIdp.SERVICE_NAME, "GET /idp/jwks -> 200");
+    ReportAssertions.assertEdge(
+        CATEGORY,
+        ACCEPTED_SLUG,
+        "http",
+        SERVICE,
+        MockIdp.SERVICE_NAME,
+        "GET /idp/.well-known/openid-configuration -> 200");
     // Observed on the near side, by the filter, with the actor this story set.
     ReportAssertions.assertEdge(
         CATEGORY, ACCEPTED_SLUG, "http", OWNER, SERVICE, "GET " + GUARDED_ROUTE + " -> 200");
