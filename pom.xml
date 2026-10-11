@@ -68,7 +68,7 @@
              names the driver as a string, so a driver that moved without the rule would pass a
              build it should fail. -->
         <qits.db-core.version>2026.1002.70617</qits.db-core.version>
-        <qits.arch-rules.version>2026.1002.70617</qits.arch-rules.version>
+        <qits.arch-rules.version>2026.1011.185745</qits.arch-rules.version>
 
         <!-- Machine identity, released out of the same libs/qits-integrations-quarkus train. It is
              the fourth platform jar this repo takes and the one AGENTS.md's "nothing else may
@@ -85,7 +85,7 @@
              @Uncaused) that every row this service writes has to decide about — see ArchRulesTest —
              and its own datasource, persistence unit and Flyway lineage. Adding it later would be a
              flag day: a second store appears in the deployment spec and in every suite at once. -->
-        <qits.eventstream.version>2026.1010.165955</qits.eventstream.version>
+        <qits.eventstream.version>2026.1011.64434</qits.eventstream.version>
 
         <!-- The user-story framework (test scope). This repository's userflow catalogue is six IT
              classes on one profile — api/TokenValidationBootstrapIT plus service/…/stories/** — so
