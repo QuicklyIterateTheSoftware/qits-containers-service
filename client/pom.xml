@@ -20,10 +20,12 @@
          qits-projects the day they depend on this. The wire types are restated here rather than
          shared, which is the same trade the poms make with their duplicated versions.
 
-         TWO DEPENDENCIES AND NO FRAMEWORK. There is no quarkus-arc here and no OIDC extension:
-         ContainersClient is a plain class a consumer's own producer turns into a bean, which is
-         what lets a daemon with no CDI construct one and what keeps this jar out of the way of a
-         consumer's own container. -->
+         NO FRAMEWORK, THOUGH NOT TWO DEPENDENCIES ANY MORE: qits-http-core joined jackson-databind
+         and qits-eventstream for the tracing wrap (qits-1198), but it is the same API-jars-only
+         bargain as the other two — no quarkus-arc here and no OIDC extension. ContainersClient is a
+         plain class a consumer's own producer turns into a bean, which is what lets a daemon with
+         no CDI construct one and what keeps this jar out of the way of a consumer's own
+         container. -->
     <artifactId>qits-containers-client</artifactId>
     <name>qits-containers :: client</name>
 
@@ -63,6 +65,14 @@
                  its own version rather than this jar's. -->
             <groupId>${project.groupId}</groupId>
             <artifactId>qits-eventstream</artifactId>
+        </dependency>
+        <dependency>
+            <!-- QitsHttpClients.wrap, so ContainersClient's own HttpClient opens a CLIENT span and
+                 stamps X-Qits-Caller exactly as every other service-to-service call does. Compile
+                 scope: a consumer that constructs this class with new has to pass one through the
+                 constructor overload that takes it. -->
+            <groupId>${project.groupId}</groupId>
+            <artifactId>qits-http-core</artifactId>
         </dependency>
 
         <dependency>

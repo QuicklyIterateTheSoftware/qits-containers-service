@@ -224,6 +224,19 @@ class ContainersClientProducer {
 construct one with `new`. `TokenSource` is asked per request, so a consumer's own caching decides
 when a token is stale; empty is the shipped posture, because the service's gate ships off.
 
+A fifth, optional constructor argument takes a `QitsHttpClients` and wraps the client's own
+`HttpClient` through it — a CLIENT span and `X-Qits-Caller` on every call, the same two things a
+REST client gets from Quarkus and this one otherwise would not:
+
+```java
+@Inject QitsHttpClients clients;
+…
+return new ContainersClient(url, request, ensure, () -> tokens.forAudience("qits-containers"), clients);
+```
+
+The four-argument constructor still builds the same client unwrapped — nothing that already calls
+it has to change.
+
 ### What a native consumer registers
 
 `ContainersJson` builds its **own** `ObjectMapper`, for the reason `CanonicalJson` does — a

@@ -11,6 +11,8 @@ import eu.wohlben.qits.containers.client.ContainersWire.Recreate;
 import eu.wohlben.qits.containers.client.ContainersWire.Spec;
 import eu.wohlben.qits.eventstream.CausationHeader;
 import eu.wohlben.qits.eventstream.CausationScope;
+import eu.wohlben.qits.http.QitsHttpClients;
+import io.opentelemetry.api.OpenTelemetry;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -283,6 +285,29 @@ class ContainersClientRequestTest {
   void theConnectTimeoutIsOnTheClientRatherThanOnACall() {
     // Two seconds, in code, because it belongs to the HttpClient instance and not to a request.
     assertEquals(Optional.of(Duration.ofSeconds(2)), client.http.connectTimeout());
+  }
+
+  @Test
+  void aNullQitsHttpClientsLeavesTheClientExactlyAsTheFourArgConstructorDoes() {
+    ContainersClient unwrapped =
+        new ContainersClient(
+            stub.url(), Duration.ofSeconds(5), Duration.ofSeconds(5), null, null);
+    assertEquals(HttpClient.Version.HTTP_1_1, unwrapped.http.version());
+  }
+
+  @Test
+  void aQitsHttpClientsWrapsTheClientAndKeepsThePin() {
+    // The fifth, optional constructor argument (qits-1198): wrapping must not cost the HTTP/1.1
+    // pin, which is why QitsHttpClients#wrap delegates version() to the client it wraps.
+    ContainersClient wrapped =
+        new ContainersClient(
+            stub.url(),
+            Duration.ofSeconds(5),
+            Duration.ofSeconds(5),
+            null,
+            QitsHttpClients.of(OpenTelemetry.noop(), "qits-containers-client-test"));
+    assertEquals(HttpClient.Version.HTTP_1_1, wrapped.http.version());
+    assertEquals(Optional.of(Duration.ofSeconds(2)), wrapped.http.connectTimeout());
   }
 
   @Test
