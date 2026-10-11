@@ -82,6 +82,16 @@
             <artifactId>qits-auth-core</artifactId>
         </dependency>
         <dependency>
+            <!-- CallerServerFilter and CallerClientFilter, discovered off this jar alone through its
+                 jandex index: an inbound X-Qits-Caller is recorded on the server span as qits.caller,
+                 and an outbound REST-client call is stamped with this service's own name. The jar
+                 itself has to be on this module's runtime classpath for either filter to register —
+                 see qits-containers-client's pom, which brings QitsHttpClients for the client's own
+                 raw HttpClient. -->
+            <groupId>${project.groupId}</groupId>
+            <artifactId>qits-http-core</artifactId>
+        </dependency>
+        <dependency>
             <!-- Bearer validation against qits-idp. qits-auth-core deliberately does NOT bring it:
                  validating a token is each service's own choice of extension and config, and that
                  jar only reads the identity the validation leaves behind. With the rollout gate off

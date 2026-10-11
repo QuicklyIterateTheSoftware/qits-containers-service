@@ -15,6 +15,7 @@ import eu.wohlben.qits.containers.client.ContainersWire.LogTail;
 import eu.wohlben.qits.containers.client.ContainersWire.VolumeEnvelope;
 import eu.wohlben.qits.eventstream.CausationHeader;
 import eu.wohlben.qits.eventstream.CausationScope;
+import eu.wohlben.qits.http.QitsHttpClients;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -99,13 +100,10 @@ public final class ContainersClient {
    * <p>Package-private so {@code HttpVersionPinTest} can read the configured version back off it.
    * The pin is a property of this object and not of any exchange — a response's version is what the
    * two ends negotiated, and a server that only speaks HTTP/1.1 answers 1.1 to an unpinned client
-   * too — so the honest assertion is this field's own.
+   * too — so the honest assertion is this field's own. {@link QitsHttpClients#wrap}'s client
+   * delegates {@code version()} to the raw one built here, so the pin holds wrapped or not.
    */
-  final HttpClient http =
-      HttpClient.newBuilder()
-          .version(HttpClient.Version.HTTP_1_1)
-          .connectTimeout(CONNECT_TIMEOUT)
-          .build();
+  final HttpClient http;
 
   private final String base;
 
@@ -126,6 +124,25 @@ public final class ContainersClient {
    */
   public ContainersClient(
       String url, Duration requestTimeout, Duration ensureTimeout, TokenSource tokens) {
+    this(url, requestTimeout, ensureTimeout, tokens, null);
+  }
+
+  /**
+   * {@link #ContainersClient(String, Duration, Duration, TokenSource)}, with this client's own
+   * {@code HttpClient} run through {@link QitsHttpClients#wrap} — a CLIENT span per call and
+   * {@code X-Qits-Caller} on it, the same two things a REST client gets from Quarkus and this one
+   * otherwise would not. A null {@code clients} is the other constructor exactly: the raw client,
+   * unwrapped.
+   *
+   * @param clients the consumer's own {@link QitsHttpClients} bean, or null to keep the client
+   *     unwrapped
+   */
+  public ContainersClient(
+      String url,
+      Duration requestTimeout,
+      Duration ensureTimeout,
+      TokenSource tokens,
+      QitsHttpClients clients) {
     if (url == null || url.isBlank()) {
       throw new IllegalArgumentException("qits.containers.url is required");
     }
@@ -134,6 +151,12 @@ public final class ContainersClient {
     this.requestTimeout = require(requestTimeout, "requestTimeout");
     this.ensureTimeout = require(ensureTimeout, "ensureTimeout");
     this.tokens = tokens == null ? TokenSource.none() : tokens;
+    HttpClient raw =
+        HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(CONNECT_TIMEOUT)
+            .build();
+    this.http = clients == null ? raw : clients.wrap(raw);
   }
 
   // --- the one write that starts something ---------------------------------------------------------
