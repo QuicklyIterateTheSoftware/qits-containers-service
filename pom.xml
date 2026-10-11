@@ -84,7 +84,7 @@
              java.net.http.HttpClient into one that opens a CLIENT span and sends traceparent plus
              X-Qits-Caller; the server filter (jandex-discovered off this jar alone) records an
              inbound caller on the server span. Not released yet (qits-1198). -->
-        <qits.http-core.version>0-qits-1198-local</qits.http-core.version>
+        <qits.http-core.version>2026.1011.185745</qits.http-core.version>
 
         <!-- The platform event bus client. It is here from the scaffold rather than from the first
              event, because it brings the causation persistence trio (CausedRow, CausationStamp,
