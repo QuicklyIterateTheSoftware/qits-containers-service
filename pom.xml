@@ -78,20 +78,20 @@
              answer invented here would be the interim static token the platform has a standing
              decision against. It brings no server and no transport: quarkus-oidc validates the
              bearer and this jar only reads the identity that validation leaves behind. -->
-        <qits.auth-core.version>2026.1002.70617</qits.auth-core.version>
+        <qits.auth-core.version>2026.1012.173247</qits.auth-core.version>
 
         <!-- Service-to-service HTTP that says who is calling: QitsHttpClients.wrap turns a raw
              java.net.http.HttpClient into one that opens a CLIENT span and sends traceparent plus
              X-Qits-Caller; the server filter (jandex-discovered off this jar alone) records an
              inbound caller on the server span. Not released yet (qits-1198). -->
-        <qits.http-core.version>2026.1011.185745</qits.http-core.version>
+        <qits.http-core.version>2026.1013.64811</qits.http-core.version>
 
         <!-- The platform event bus client. It is here from the scaffold rather than from the first
              event, because it brings the causation persistence trio (CausedRow, CausationStamp,
              @Uncaused) that every row this service writes has to decide about — see ArchRulesTest —
              and its own datasource, persistence unit and Flyway lineage. Adding it later would be a
              flag day: a second store appears in the deployment spec and in every suite at once. -->
-        <qits.eventstream.version>2026.1011.202648</qits.eventstream.version>
+        <qits.eventstream.version>2026.1014.223716</qits.eventstream.version>
 
         <!-- The user-story framework (test scope). This repository's userflow catalogue is six IT
              classes on one profile — api/TokenValidationBootstrapIT plus service/…/stories/** — so
@@ -116,7 +116,7 @@
              qits-idp-golden-masters holds what qits-idp-service answers in each provider state.
              Both exact, never a range: a newer recording is a pact change. -->
         <qits.pact-consumer.version>2026.1010.141817</qits.pact-consumer.version>
-        <qits.idp-golden-masters.version>2026.1010.134259</qits.idp-golden-masters.version>
+        <qits.idp-golden-masters.version>2026.1012.180836</qits.idp-golden-masters.version>
 
         <!-- The docker layer: the spec types, the label namespace, the argv, the process runner, the
              driver and the pure GC decisions, released out of qits-containers-javalib
