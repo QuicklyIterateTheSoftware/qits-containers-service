@@ -127,7 +127,7 @@
              builds it and client-contracts has to pin a released one: 2026.1010.134141, the
              latest, whose content is byte-identical to golden-masters/ at the time of pinning.
              A re-recording changes the jar's version, and this line moves with it. -->
-        <qits.containers-golden-masters.version>2026.1010.134141</qits.containers-golden-masters.version>
+        <qits.containers-golden-masters.version>2026.1018.185227</qits.containers-golden-masters.version>
 
         <!-- The docker layer: the spec types, the label namespace, the argv, the process runner, the
              driver and the pure GC decisions, released out of qits-containers-javalib
