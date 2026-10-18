@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>eu.wohlben.qits</groupId>
+        <artifactId>qits-containers</artifactId>
+        <version>2026.1015.33250</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <!-- The consumer pact kit for qits-containers-client (ticket qits-1163).
+
+         A REST call a library makes on behalf of a service is pacted by THAT SERVICE as consumer,
+         with only the calls its real use sends. qits-workspaces-service and qits-projects-service
+         call this service through ContainersClient, so each of them writes
+         pacts/<consumer>_qits-containers-service.json — and this jar is what they write it with:
+         the rows (one group per ContainersClient method, on the provider states the golden masters
+         record), the drives that run the REAL client against the pact mock server, and the scan
+         of a consumer's compiled classes that decides which rows that consumer gets.
+
+         A consumer takes it at TEST scope. Everything here is COMPILE scope so that one
+         dependency brings the client, the reader and the recordings along transitively.
+
+         This jar writes no pact file and this repository publishes none for it: the pact is the
+         consumer's. -->
+    <artifactId>qits-containers-client-contracts</artifactId>
+    <name>qits-containers :: client-contracts</name>
+
+    <dependencies>
+        <dependency>
+            <!-- The client the drives call, at this jar's own version: the via version is this
+                 version, so the two cannot be allowed to disagree. -->
+            <groupId>${project.groupId}</groupId>
+            <artifactId>qits-containers-client</artifactId>
+        </dependency>
+        <dependency>
+            <!-- ConsumerPact, Via, GoldenInteraction: the shared golden-master reader. It brings
+                 pact-jvm's consumer junit5 and JUnit itself. -->
+            <groupId>${project.groupId}</groupId>
+            <artifactId>qits-pact-consumer</artifactId>
+        </dependency>
+        <dependency>
+            <!-- What the provider answers in each state; the rows name its states and
+                 operationIds. A released version: see the root pom's property. -->
+            <groupId>${project.groupId}</groupId>
+            <artifactId>qits-containers-golden-masters</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <!-- One filtered file: the version ContainersClientPact.VIA names. -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <testResources>
+            <!-- THIS COMMIT'S recordings, ahead of the pinned jar on the test classpath
+                 (GoldenMasters takes the first index.json whose provider matches, and
+                 target/test-classes comes before every dependency). So this suite proves the rows
+                 and drives against what the provider records NOW, and a re-recording that breaks a
+                 drive is red here in the same commit — not in a consumer, after a release.
+                 Consumers read the pinned qits-containers-golden-masters jar instead, which is why
+                 that pin has to follow a re-recording once the release publishing it exists. -->
+            <testResource>
+                <directory>${project.basedir}/../golden-masters</directory>
+                <targetPath>golden-masters</targetPath>
+            </testResource>
+        </testResources>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

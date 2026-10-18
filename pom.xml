@@ -39,6 +39,9 @@
              `core` is internal and not published; `client` is the one published jar. -->
         <module>core</module>
         <module>client</module>
+        <!-- The consumer pact kit for `client` (qits-1163): rows, drives and the usage scan a
+             consumer of qits-containers-client writes its pact with. Published beside it. -->
+        <module>client-contracts</module>
         <module>service</module>
     </modules>
 
@@ -115,8 +118,16 @@
              test scope and this repository takes nothing else from that newer release yet.
              qits-idp-golden-masters holds what qits-idp-service answers in each provider state.
              Both exact, never a range: a newer recording is a pact change. -->
-        <qits.pact-consumer.version>2026.1010.141817</qits.pact-consumer.version>
+        <!-- 2026.1018.135552 is the release that brought Via (qits-1163): client-contracts takes
+             it in COMPILE scope, so a consumer of that jar inherits it at test scope. -->
+        <qits.pact-consumer.version>2026.1018.135552</qits.pact-consumer.version>
         <qits.idp-golden-masters.version>2026.1012.180836</qits.idp-golden-masters.version>
+        <!-- This repository's OWN golden masters, as released (qits-1163). The platform packages
+             golden-masters/ into that jar from the release step, so no module of this reactor
+             builds it and client-contracts has to pin a released one: 2026.1010.134141, the
+             latest, whose content is byte-identical to golden-masters/ at the time of pinning.
+             A re-recording changes the jar's version, and this line moves with it. -->
+        <qits.containers-golden-masters.version>2026.1010.134141</qits.containers-golden-masters.version>
 
         <!-- The docker layer: the spec types, the label namespace, the argv, the process runner, the
              driver and the pure GC decisions, released out of qits-containers-javalib
@@ -188,7 +199,8 @@
                 <version>${pact.version}</version>
             </dependency>
             <dependency>
-                <!-- Test scope at every declaration site. -->
+                <!-- Test scope in `service`; compile scope in client-contracts, the jar consumers
+                     take at test scope. -->
                 <groupId>${project.groupId}</groupId>
                 <artifactId>qits-pact-consumer</artifactId>
                 <version>${qits.pact-consumer.version}</version>
@@ -198,6 +210,12 @@
                 <groupId>${project.groupId}</groupId>
                 <artifactId>qits-idp-golden-masters</artifactId>
                 <version>${qits.idp-golden-masters.version}</version>
+            </dependency>
+            <dependency>
+                <!-- Compile scope in client-contracts only, which re-exports it to consumers. -->
+                <groupId>${project.groupId}</groupId>
+                <artifactId>qits-containers-golden-masters</artifactId>
+                <version>${qits.containers-golden-masters.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.zonky.test</groupId>

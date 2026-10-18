@@ -398,6 +398,33 @@ quarkus-oidc makes at startup when the machine-auth gate is on (`getOpenIdConfig
 it from `qits-idp-golden-masters` with `qits-pact-consumer` and runs each row against a pact mock;
 `-Dgolden.update=true` rewrites the file. `release.yml`'s `contracts: pacts:` publishes it.
 
+## The consumer pact kit (qits-1163)
+
+`client-contracts/` (`eu.wohlben.qits:qits-containers-client-contracts`, published beside the
+client at the same version) is what a consumer of `ContainersClient` writes its pact with — README's
+"Pacting your use of it" has the consumer side. The ruling it implements: a call a library makes
+for a service is pacted by that service, with only the calls its real use sends, and carries
+`qits-via`; the client being published from this repository keeps the file two-part.
+
+- `Feature` is one group per client method (`LIST_OWNER`/`LIST_WORKLOAD` split by descriptor);
+  `ContainersClientRows` holds each feature's rows on the golden-master states and the drive that
+  runs the real client. A new client method needs a `Feature` and rows, or every consumer that
+  calls it fails its scan — on purpose.
+- `ClientUsage` reads `Methodref`s to `ContainersClient` out of class files (`java.lang.classfile`);
+  no class is loaded.
+- `ContainersClientPact.VIA`'s version is `${project.version}`, filtered into
+  `version.properties`; `pact()` fails when the client jar on the classpath is another version.
+- The suite runs every row under a dummy consumer and writes **no** pact file: there is no
+  `contracts.pacts` entry for it, and there must not be.
+- **Its test classpath carries `golden-masters/` from this commit** ahead of the pinned
+  `qits-containers-golden-masters` jar (root pom `qits.containers-golden-masters.version`), so a
+  re-recording that breaks a drive is red here in the same commit. Consumers read the pinned jar,
+  so after a release that re-records, move that pin to the version the release published.
+- A drive must send what the recording says, and the recording must be a request the client can
+  make: `GoldenMasterRecordingTest.ENSURE_BODY` carries `hostDockerSocket:false` because the
+  client always sends that primitive, and the recording without it was a request no real client
+  produces.
+
 ## The userflow catalogue
 
 Thirteen `@UserStory` methods across six `@QuarkusIntegrationTest` classes, all on **one**

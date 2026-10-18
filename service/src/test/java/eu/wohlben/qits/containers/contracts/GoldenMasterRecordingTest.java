@@ -106,9 +106,15 @@ class GoldenMasterRecordingTest {
   private static final String PLACE = "/containers/api/containers/{owner}/{workload}/{ref}";
   private static final String VOLUME = "/containers/api/volumes/{owner}/{name}";
 
-  /** The ensure the {@code ContainersClient} sends for a long-lived workload. */
+  /**
+   * The ensure the {@code ContainersClient} sends for a long-lived workload: {@code
+   * EnsureRequest.of(Spec.of("alpine:3", "qits-net"), Policy.explicitLifetime())}, byte for byte
+   * as the client serialises it. {@code hostDockerSocket} is a primitive, so the client always
+   * sends it; a recording without it described a request the real client cannot make, and the
+   * client-contracts drive of this row failed on exactly that (qits-1163).
+   */
   static final String ENSURE_BODY =
-      "{\"spec\":{\"image\":\"alpine:3\",\"network\":\"qits-net\"},"
+      "{\"spec\":{\"image\":\"alpine:3\",\"network\":\"qits-net\",\"hostDockerSocket\":false},"
           + "\"policy\":{\"type\":\"EXPLICIT\"},\"recreate\":\"never\"}";
 
   /**
