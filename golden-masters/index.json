@@ -260,6 +260,152 @@
       ]
     },
     {
+      "name": "a running container with its volumes",
+      "slug": "a-running-container-with-its-volumes",
+      "params": {
+        "owner": "qits-workspaces",
+        "ref": "contract-1",
+        "workload": "editor"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "deleteContainer",
+          "method": "DELETE",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}",
+          "query": {
+            "logs": "false",
+            "volumes": "true"
+          },
+          "status": 200,
+          "file": "a-running-container-with-its-volumes/deleteContainer.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "a running workspace container",
+      "slug": "a-running-workspace-container",
+      "params": {
+        "owner": "qits-workspaces",
+        "ref": "contract-1",
+        "workload": "workspace"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "deleteContainer",
+          "method": "DELETE",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}",
+          "query": {
+            "logs": "false",
+            "volumes": "false"
+          },
+          "status": 200,
+          "file": "a-running-workspace-container/deleteContainer.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "getContainer",
+          "method": "GET",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}",
+          "status": 200,
+          "file": "a-running-workspace-container/getContainer.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "listWorkloadContainers",
+          "method": "GET",
+          "path": "/containers/api/containers/{owner}/{workload}",
+          "status": 200,
+          "file": "a-running-workspace-container/listWorkloadContainers.json",
+          "frozen": {
+            "ids": [
+              "$.containers[*].id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "stopContainer",
+          "method": "POST",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}/stop",
+          "status": 200,
+          "file": "a-running-workspace-container/stopContainer.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "touchContainer",
+          "method": "POST",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}/touch",
+          "status": 204,
+          "file": "a-running-workspace-container/touchContainer.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "a workspace volume exists",
+      "slug": "a-workspace-volume-exists",
+      "params": {
+        "name": "contract-home",
+        "owner": "qits-workspaces"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "deleteVolume",
+          "method": "DELETE",
+          "path": "/containers/api/volumes/{owner}/{name}",
+          "status": 200,
+          "file": "a-workspace-volume-exists/deleteVolume.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
       "name": "no container",
       "slug": "no-container",
       "params": {
@@ -372,6 +518,69 @@
           "file": "no-volume/getVolume.json",
           "frozen": {
             "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "no workspace container at the place",
+      "slug": "no-workspace-container-at-the-place",
+      "params": {
+        "owner": "qits-workspaces",
+        "ref": "contract-1",
+        "workload": "workspace"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "ensureContainer",
+          "method": "PUT",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}",
+          "body": {
+            "spec": {
+              "image": "alpine:3",
+              "network": "qits-net"
+            },
+            "policy": {
+              "type": "EXPLICIT"
+            },
+            "recreate": "never"
+          },
+          "status": 201,
+          "file": "no-workspace-container-at-the-place/ensureContainer.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "no workspace volume of that name",
+      "slug": "no-workspace-volume-of-that-name",
+      "params": {
+        "name": "contract-home",
+        "owner": "qits-workspaces"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "ensureVolume",
+          "method": "PUT",
+          "path": "/containers/api/volumes/{owner}/{name}",
+          "status": 200,
+          "file": "no-workspace-volume-of-that-name/ensureVolume.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
             "instants": [],
             "strings": [],
             "listFilteredTo": null
