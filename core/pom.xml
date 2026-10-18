@@ -153,6 +153,17 @@
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- QITS_DOMAIN carries no default in the shipped properties file (qits-1402).
+                         BuildkitShippedConfigTest reads qits.containers.buildkit.registry-mirrors
+                         and http-registries through a bare ConfigProvider.getConfig() — no Quarkus
+                         bootstrap, so this module's own application.properties convention (it ships
+                         none; it is a library) cannot supply it. An environment variable on this
+                         forked JVM is what SmallRye Config's own discovery sees. -->
+                    <environmentVariables>
+                        <QITS_DOMAIN>wohlben.eu</QITS_DOMAIN>
+                    </environmentVariables>
+                </configuration>
             </plugin>
             <plugin>
                 <!-- The consuming Quarkus app needs an index of this jar's beans and entities;

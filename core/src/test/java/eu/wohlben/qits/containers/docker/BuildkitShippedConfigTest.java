@@ -33,6 +33,9 @@ class BuildkitShippedConfigTest {
   private static final String MIRRORS = "qits.containers.buildkit.registry-mirrors";
   private static final String REGISTRIES = "qits.containers.buildkit.http-registries";
 
+  /** QITS_DOMAIN carries no default in the shipped file; the suite supplies one — see pom.xml. */
+  private static final String DOMAIN = "wohlben.eu";
+
   private static Config config() {
     return ConfigProvider.getConfig();
   }
@@ -43,13 +46,15 @@ class BuildkitShippedConfigTest {
 
     assertEquals(
         List.of(
+            "registry.qits." + DOMAIN + "=dev-qits-artifacts:8080",
+            "mirror.qits." + DOMAIN + "=dev-qits-mirror:8080",
             "registry.dev.localhost:8080=dev-qits-artifacts:8080",
-            "mirror.dev.localhost:8080=dev-qits-platform-mirror:8080",
+            "mirror.dev.localhost:8080=dev-qits-mirror:8080",
             "localhost:8081=dev-qits-artifacts:8080",
-            "localhost:8082=dev-qits-platform-mirror:8080",
-            "quay.io=dev-qits-platform-mirror:8080/quay",
-            "registry.access.redhat.com=dev-qits-platform-mirror:8080/redhat",
-            "docker.io=dev-qits-platform-mirror:8080/hub"),
+            "localhost:8082=dev-qits-mirror:8080",
+            "quay.io=dev-qits-mirror:8080/quay",
+            "registry.access.redhat.com=dev-qits-mirror:8080/redhat",
+            "docker.io=dev-qits-mirror:8080/hub"),
         mirrors,
         "every upstream is <env>-<application>; a bare one resolves nowhere on qits-net and fails"
             + " every base pull with a DNS error");
@@ -58,7 +63,7 @@ class BuildkitShippedConfigTest {
   @Test
   void theHttpRegistriesAreTheSameTwoEndpointsAndTierQualifiedToo() {
     assertEquals(
-        List.of("dev-qits-artifacts:8080", "dev-qits-platform-mirror:8080"),
+        List.of("dev-qits-artifacts:8080", "dev-qits-mirror:8080"),
         config().getValues(REGISTRIES, String.class),
         "a plain-HTTP endpoint the builder is not told about is a TLS attempt against a listener"
             + " that speaks none");
@@ -71,7 +76,7 @@ class BuildkitShippedConfigTest {
     // catching — it works on this platform and names the wrong tier on every other one.
     String raw = rawProperty(MIRRORS);
     assertTrue(
-        raw.contains("${QITS_ENVIRONMENT:dev}-qits-platform-mirror"),
+        raw.contains("${QITS_ENVIRONMENT:dev}-qits-mirror"),
         "the mirror's tier must be derived, not typed: " + raw);
     assertTrue(
         raw.contains("${QITS_ENVIRONMENT:dev}-qits-artifacts"),
