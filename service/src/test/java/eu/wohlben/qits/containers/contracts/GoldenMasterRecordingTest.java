@@ -171,6 +171,14 @@ class GoldenMasterRecordingTest {
               null,
               200),
           Interaction.of(
+              ProviderStates.A_RUNNING_CONTAINER_WITH_ITS_VOLUMES,
+              "deleteContainer",
+              "DELETE",
+              PLACE,
+              Map.of("volumes", "true", "logs", "false"),
+              null,
+              200),
+          Interaction.of(
               ProviderStates.NO_CONTAINER, "getContainer", "GET", PLACE, Map.of(), null, 404),
           Interaction.of(
               ProviderStates.NO_CONTAINER,

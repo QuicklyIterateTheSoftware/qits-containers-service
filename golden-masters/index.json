@@ -260,6 +260,37 @@
       ]
     },
     {
+      "name": "a running container with its volumes",
+      "slug": "a-running-container-with-its-volumes",
+      "params": {
+        "owner": "qits-workspaces",
+        "ref": "contract-1",
+        "workload": "editor"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "deleteContainer",
+          "method": "DELETE",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}",
+          "query": {
+            "logs": "false",
+            "volumes": "true"
+          },
+          "status": 200,
+          "file": "a-running-container-with-its-volumes/deleteContainer.json",
+          "frozen": {
+            "ids": [
+              "$.id"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
       "name": "no container",
       "slug": "no-container",
       "params": {

@@ -41,6 +41,14 @@ public class ProviderStates {
 
   public static final String A_RUNNING_CONTAINER = "a running container";
   public static final String NO_CONTAINER = "no container";
+
+  /**
+   * The running container, removed together with its anonymous volumes ({@code ?volumes=true}): what
+   * qits-projects' {@code LegacyAgentPlaces} sends. A state of its own because a state records one
+   * answer per operation, and {@link #A_RUNNING_CONTAINER} holds the {@code volumes=false} delete.
+   */
+  public static final String A_RUNNING_CONTAINER_WITH_ITS_VOLUMES =
+      "a running container with its volumes";
   public static final String A_CLAIMED_VOLUME = "a claimed volume";
   public static final String NO_VOLUME = "no volume";
   public static final String A_HOST_WITH_RECLAIMABLE_STORAGE = "a host with reclaimable storage";
@@ -102,6 +110,7 @@ public class ProviderStates {
 
   public ProviderStates() {
     states.put(A_RUNNING_CONTAINER, this::aRunningContainer);
+    states.put(A_RUNNING_CONTAINER_WITH_ITS_VOLUMES, this::aRunningContainer);
     states.put(NO_CONTAINER, this::noContainer);
     states.put(A_CLAIMED_VOLUME, this::aClaimedVolume);
     states.put(NO_VOLUME, this::noVolume);

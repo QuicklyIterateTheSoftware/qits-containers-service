@@ -133,6 +133,11 @@ class ConsumerPactVerificationTest {
     return states.params(ProviderStates.A_RUNNING_CONTAINER);
   }
 
+  @State(ProviderStates.A_RUNNING_CONTAINER_WITH_ITS_VOLUMES)
+  Map<String, String> aRunningContainerWithItsVolumes() {
+    return states.params(ProviderStates.A_RUNNING_CONTAINER_WITH_ITS_VOLUMES);
+  }
+
   @State(ProviderStates.NO_CONTAINER)
   Map<String, String> noContainer() {
     return states.params(ProviderStates.NO_CONTAINER);
