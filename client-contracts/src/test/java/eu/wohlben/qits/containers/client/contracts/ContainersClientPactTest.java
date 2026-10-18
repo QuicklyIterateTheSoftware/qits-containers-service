@@ -48,10 +48,9 @@ class ContainersClientPactTest {
     assertEquals(
         List.of(
             "needs provider state 'a running container' for ensureContainer in qits-containers-service",
-            "needs provider state 'a running container with a named volume' for deleteContainer in qits-containers-service",
             "needs provider state 'a claimed volume' for ensureVolume in qits-containers-service"),
         ALL.unrecorded());
-    ContractRow unrecorded = Feature.DELETE_WITH_VOLUMES.rows().getFirst();
+    ContractRow unrecorded = Feature.ENSURE.rows().get(1);
     assertThrows(ProviderStateMissing.class, () -> ALL.run(unrecorded));
   }
 
