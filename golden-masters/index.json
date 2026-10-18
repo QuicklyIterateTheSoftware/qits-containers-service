@@ -439,7 +439,8 @@
           "body": {
             "spec": {
               "image": "alpine:3",
-              "network": "qits-net"
+              "network": "qits-net",
+              "hostDockerSocket": false
             },
             "policy": {
               "type": "EXPLICIT"

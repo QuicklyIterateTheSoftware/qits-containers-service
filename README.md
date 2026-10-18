@@ -36,6 +36,7 @@ call this service for a step any more — not through the client, not through th
 |---|---|
 | `core/` | The domain: the registry rows, the sweeps, the spec fingerprint and the label facade (`spec/ContainerLabels`). An internal jar of this repository. It owns the datasource, the persistence unit and the Flyway lineage. |
 | `client/` | What a consumer depends on to **call** this service: the wire records, the four-outcome answer and the HttpClient behind them. It depends on `core` **not at all**. |
+| `client-contracts/` | The consumer pact kit for `client` (qits-1163): rows on the recorded provider states, drives that run the real `ContainersClient` against the pact mock, and the scan of a consumer's classes that picks its rows. A consumer takes it at test scope. |
 | `service/` | The deployable: the REST surface under `/containers/api`, the driver's wiring (`dockerhost/DriverProducer`), the machine guard, the boot steps. |
 
 **The docker layer lives in its own jar**, `eu.wohlben.qits:qits-containers-driver`, released from
@@ -266,6 +267,43 @@ Both directions are on it, and a record this consumer only *sends* is as depende
 reads: the failure is on the writing side too, where an unregistered record has no components to
 find. A JVM test cannot catch a missing entry — on a JVM these types reflect whether anyone
 registered them or not — which is why the list is written down here rather than discovered.
+
+### Pacting your use of it (qits-1163)
+
+A call `ContainersClient` makes on your behalf is **your** pact: you are the consumer, this
+service is the provider, and the file is `pacts/<your-repo>_qits-containers-service.json` (two
+parts, because the client is published from the provider's own repository). Every interaction
+carries `comments.references.qits-via` = `{repository: qits-containers-service, artifact:
+eu.wohlben.qits:qits-containers-client, version: <client version>}`. Take the kit at test scope, at
+the **same version** as the client (it brings the client, `qits-pact-consumer` and
+`qits-containers-golden-masters` along):
+
+```xml
+<dependency>
+    <groupId>eu.wohlben.qits</groupId>
+    <artifactId>qits-containers-client-contracts</artifactId>
+    <version>${qits.containers-client.version}</version>
+    <scope>test</scope>
+</dependency>
+```
+
+```java
+class ContainersPactTest {
+  // Scans target/classes for ContainersClient calls; the pact holds those features' rows only.
+  static final ContainersClientPact.Builder CONTAINERS =
+      ContainersClientPact.forConsumer("qits-workspaces-service");
+
+  @Test void everyRecordedRowRunsTheRealClient() { CONTAINERS.runRecorded(); }
+  @Test void theCommittedPactIsWhatTheRowsWrite() { CONTAINERS.pact().compareOrWritePactFile(); }
+}
+```
+
+The scan reads the constant pools of your compiled main classes, so the pact follows your code: a
+new call adds its rows, a call to a method the kit has no rows for fails the test. What a class
+file cannot show is added by hand — `.uses(Feature.DELETE_WITH_VOLUMES)` for a
+`delete(..., true, …)`. `-Dgolden.update=true` writes the file. Rows whose provider state is not
+recorded yet stay out of the file (`CONTAINERS.unrecorded()` names them) and join it once this
+service records the state.
 
 ## The data plane
 
