@@ -138,6 +138,26 @@ class ConsumerPactVerificationTest {
     return states.params(ProviderStates.A_RUNNING_CONTAINER_WITH_ITS_VOLUMES);
   }
 
+  @State(ProviderStates.A_RUNNING_WORKSPACE_CONTAINER)
+  Map<String, String> aRunningWorkspaceContainer() {
+    return states.params(ProviderStates.A_RUNNING_WORKSPACE_CONTAINER);
+  }
+
+  @State(ProviderStates.NO_WORKSPACE_CONTAINER)
+  Map<String, String> noWorkspaceContainer() {
+    return states.params(ProviderStates.NO_WORKSPACE_CONTAINER);
+  }
+
+  @State(ProviderStates.A_WORKSPACE_VOLUME)
+  Map<String, String> aWorkspaceVolume() {
+    return states.params(ProviderStates.A_WORKSPACE_VOLUME);
+  }
+
+  @State(ProviderStates.NO_WORKSPACE_VOLUME)
+  Map<String, String> noWorkspaceVolume() {
+    return states.params(ProviderStates.NO_WORKSPACE_VOLUME);
+  }
+
   @State(ProviderStates.NO_CONTAINER)
   Map<String, String> noContainer() {
     return states.params(ProviderStates.NO_CONTAINER);

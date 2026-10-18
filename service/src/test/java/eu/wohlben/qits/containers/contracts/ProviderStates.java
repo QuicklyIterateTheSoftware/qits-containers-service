@@ -49,6 +49,17 @@ public class ProviderStates {
    */
   public static final String A_RUNNING_CONTAINER_WITH_ITS_VOLUMES =
       "a running container with its volumes";
+  /**
+   * The same places and volumes at qits-workspaces-service's own workload, {@code workspace}: its
+   * adapter ({@code WorkspaceContainers}) fixes the workload segment of every path, and a pact path
+   * is matched exactly, so the {@code editor} recordings above cannot stand in for it.
+   */
+  public static final String A_RUNNING_WORKSPACE_CONTAINER = "a running workspace container";
+
+  public static final String NO_WORKSPACE_CONTAINER = "no workspace container at the place";
+  public static final String A_WORKSPACE_VOLUME = "a workspace volume exists";
+  public static final String NO_WORKSPACE_VOLUME = "no workspace volume of that name";
+
   public static final String A_CLAIMED_VOLUME = "a claimed volume";
   public static final String NO_VOLUME = "no volume";
   public static final String A_HOST_WITH_RECLAIMABLE_STORAGE = "a host with reclaimable storage";
@@ -65,6 +76,7 @@ public class ProviderStates {
 
   static final String OWNER = "qits-workspaces";
   static final String WORKLOAD = "editor";
+  static final String WORKSPACE_WORKLOAD = "workspace";
   static final String REF = "contract-1";
   static final String VOLUME = "contract-home";
 
@@ -112,6 +124,10 @@ public class ProviderStates {
     states.put(A_RUNNING_CONTAINER, this::aRunningContainer);
     states.put(A_RUNNING_CONTAINER_WITH_ITS_VOLUMES, this::aRunningContainer);
     states.put(NO_CONTAINER, this::noContainer);
+    states.put(A_RUNNING_WORKSPACE_CONTAINER, () -> aRunningContainer(WORKSPACE_WORKLOAD));
+    states.put(NO_WORKSPACE_CONTAINER, () -> place(WORKSPACE_WORKLOAD));
+    states.put(A_WORKSPACE_VOLUME, this::aClaimedVolume);
+    states.put(NO_WORKSPACE_VOLUME, this::noVolume);
     states.put(A_CLAIMED_VOLUME, this::aClaimedVolume);
     states.put(NO_VOLUME, this::noVolume);
     states.put(A_HOST_WITH_RECLAIMABLE_STORAGE, this::aHostWithReclaimableStorage);
@@ -159,15 +175,20 @@ public class ProviderStates {
 
   /** One running container at {@code qits-workspaces/editor/contract-1}, with a line of logs. */
   private Setup aRunningContainer() {
+    return aRunningContainer(WORKLOAD);
+  }
+
+  /** One running container at {@code qits-workspaces/<workload>/contract-1}, with a line of logs. */
+  private Setup aRunningContainer(String workload) {
     registry.ensure(
         OWNER,
-        WORKLOAD,
+        workload,
         REF,
         ContainerSpec.builder("alpine:3").network("qits-net").build(),
         LifecyclePolicy.explicitLifetime(),
         false);
-    driver.get().scriptLogs(ContainerNames.of(OWNER, WORKLOAD, REF), "listening on :8080\n");
-    return place();
+    driver.get().scriptLogs(ContainerNames.of(OWNER, workload, REF), "listening on :8080\n");
+    return place(workload);
   }
 
   /** Nothing at {@code qits-workspaces/editor/contract-1}: the place an ensure creates. */
@@ -221,10 +242,14 @@ public class ProviderStates {
   }
 
   private static Setup place() {
+    return place(WORKLOAD);
+  }
+
+  private static Setup place(String workload) {
     Map<String, String> params = new TreeMap<>();
     params.put("owner", OWNER);
     params.put("ref", REF);
-    params.put("workload", WORKLOAD);
+    params.put("workload", workload);
     return new Setup(params, List.of());
   }
 
