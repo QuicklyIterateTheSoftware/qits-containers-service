@@ -120,7 +120,7 @@
              Both exact, never a range: a newer recording is a pact change. -->
         <!-- 2026.1018.135552 is the release that brought Via (qits-1163): client-contracts takes
              it in COMPILE scope, so a consumer of that jar inherits it at test scope. -->
-        <qits.pact-consumer.version>2026.1018.142240</qits.pact-consumer.version>
+        <qits.pact-consumer.version>2026.1018.164604</qits.pact-consumer.version>
         <qits.idp-golden-masters.version>2026.1018.142635</qits.idp-golden-masters.version>
         <!-- This repository's OWN golden masters, as released (qits-1163). The platform packages
              golden-masters/ into that jar from the release step, so no module of this reactor
