@@ -297,6 +297,14 @@
                         <quarkus.http.test-port>0</quarkus.http.test-port>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                     </systemPropertyVariables>
+                    <!-- QITS_DOMAIN carries no default (qits-1402) and the launched PACKAGED artifact
+                         reads src/main/resources only, never this module's test application.properties
+                         — so the value has to reach it as an actual OS environment variable on the
+                         launched process. ArtifactLauncher spawns that process as a child of this
+                         forked failsafe JVM, which inherits it below. -->
+                    <environmentVariables>
+                        <QITS_DOMAIN>wohlben.eu</QITS_DOMAIN>
+                    </environmentVariables>
                 </configuration>
             </plugin>
             <plugin>
