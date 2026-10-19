@@ -48,10 +48,6 @@ class BuildkitShippedConfigTest {
         List.of(
             "registry.qits." + DOMAIN + "=dev-qits-artifacts:8080",
             "mirror.qits." + DOMAIN + "=dev-qits-mirror:8080",
-            "registry.dev.localhost:8080=dev-qits-artifacts:8080",
-            "mirror.dev.localhost:8080=dev-qits-mirror:8080",
-            "localhost:8081=dev-qits-artifacts:8080",
-            "localhost:8082=dev-qits-mirror:8080",
             "quay.io=dev-qits-mirror:8080/quay",
             "registry.access.redhat.com=dev-qits-mirror:8080/redhat",
             "docker.io=dev-qits-mirror:8080/hub"),
