@@ -127,7 +127,7 @@
              builds it and client-contracts has to pin a released one: 2026.1010.134141, the
              latest, whose content is byte-identical to golden-masters/ at the time of pinning.
              A re-recording changes the jar's version, and this line moves with it. -->
-        <qits.containers-golden-masters.version>2026.1018.185227</qits.containers-golden-masters.version>
+        <qits.containers-golden-masters.version>2026.1019.103940</qits.containers-golden-masters.version>
 
         <!-- THE CONSUMER PACTS this provider verifies (qits-1149): each consumer publishes
              `pacts/<consumer>_qits-containers-service.json` as `<consumer>-pacts-qits-containers-service`,
