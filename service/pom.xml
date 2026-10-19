@@ -232,21 +232,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <!-- The consumer pacts ConsumerPactVerificationTest verifies: each jar carries one
-                 pacts/<consumer>_qits-containers-service.json, and the test reads it off the
-                 test classpath. The pinned jar IS the source of the pact; nothing is copied into
-                 this tree. -->
-            <groupId>${project.groupId}</groupId>
-            <artifactId>qits-projects-service-pacts-qits-containers-service</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <!-- Same as above: qits-workspaces-service's pact against this provider. -->
-            <groupId>${project.groupId}</groupId>
-            <artifactId>qits-workspaces-service-pacts-qits-containers-service</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <!-- The store every @QuarkusTest here boots against. Zonky spawns real postgres
                  binaries as a child process — a maven dependency rather than a container — which is
                  what keeps the clone-alone, docker-free rule true. -->
