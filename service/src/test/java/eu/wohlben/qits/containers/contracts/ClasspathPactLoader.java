@@ -30,16 +30,15 @@ import java.util.stream.Stream;
  * <p>It asks the class loader for every {@code pacts/} directory, then lists each one: a {@code jar:}
  * URL by walking the jar's entries, a {@code file:} URL by listing the directory.
  *
- * <p><b>Finding nothing is an error.</b> qits-projects-service and qits-workspaces-service
- * (ticket qits-1163) are pinned in the pom, so {@link #REQUIRED} is true and
- * {@code ConsumerPactVerificationTest} carries no {@code @IgnoreNoPactsToVerify}: a provider whose
- * pinned pacts vanished has lost its dependency, and a green run would claim the opposite.
+ * <p><b>Finding nothing is an error</b> ({@link #REQUIRED}): consumers pin their {@code
+ * <consumer>-pacts-qits-containers-service} jars in the pom, and a provider whose pinned pacts
+ * vanished has lost its dependency — a green run would claim the opposite.
  */
 public class ClasspathPactLoader implements PactLoader {
 
   static final String DIRECTORY = "pacts/";
 
-  /** Whether an empty classpath fails the build. True now that a consumer pact is pinned. */
+  /** Whether an empty classpath fails the build: true since the first consumer pact was pinned. */
   static final boolean REQUIRED = true;
 
   private static final org.jboss.logging.Logger LOG =

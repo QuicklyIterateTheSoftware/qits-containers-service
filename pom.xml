@@ -129,12 +129,12 @@
              A re-recording changes the jar's version, and this line moves with it. -->
         <qits.containers-golden-masters.version>2026.1018.185227</qits.containers-golden-masters.version>
 
-        <!-- THE PROVIDER HALF (qits-1163): every published
-             `eu.wohlben.qits:<consumer>-pacts-qits-containers-service` jar, one per consumer of
-             ContainersClient, each carrying `pacts/<consumer>_qits-containers-service.json`.
-             ConsumerPactVerificationTest verifies them off the test classpath; qits-maintenance
-             bumps a pin when its consumer publishes a changed pact. Exact, never a range: a newer
-             recording is a pact change. -->
+        <!-- THE CONSUMER PACTS this provider verifies (qits-1149): each consumer publishes
+             `pacts/<consumer>_qits-containers-service.json` as `<consumer>-pacts-qits-containers-service`,
+             and ConsumerPactVerificationTest loads every one off the test classpath. Exact, never a
+             range: qits-maintenance bumps each when its consumer releases a changed pact. -->
+        <qits.bootstrap-cli-pacts-qits-containers-service.version>2026.1018.185226</qits.bootstrap-cli-pacts-qits-containers-service.version>
+        <qits.orchestrator-service-pacts-qits-containers-service.version>2026.1018.172917</qits.orchestrator-service-pacts-qits-containers-service.version>
         <qits.projects-service-pacts-qits-containers-service.version>2026.1019.40426</qits.projects-service-pacts-qits-containers-service.version>
         <qits.workspaces-service-pacts-qits-containers-service.version>2026.1019.70413</qits.workspaces-service-pacts-qits-containers-service.version>
 
@@ -227,16 +227,25 @@
                 <version>${qits.containers-golden-masters.version}</version>
             </dependency>
             <dependency>
-                <!-- The consumer pacts ConsumerPactVerificationTest verifies: each jar carries one
-                     pacts/<consumer>_qits-containers-service.json, and the test reads it off the
-                     test classpath. The pinned jar IS the source of the pact; nothing is copied
-                     into this tree. Test scope at the declaration site. -->
+                <!-- Test scope in `service`: a consumer's pact, verified by ConsumerPactVerificationTest. -->
+                <groupId>${project.groupId}</groupId>
+                <artifactId>qits-bootstrap-cli-pacts-qits-containers-service</artifactId>
+                <version>${qits.bootstrap-cli-pacts-qits-containers-service.version}</version>
+            </dependency>
+            <dependency>
+                <!-- Test scope in `service`: a consumer's pact, verified by ConsumerPactVerificationTest. -->
+                <groupId>${project.groupId}</groupId>
+                <artifactId>qits-orchestrator-service-pacts-qits-containers-service</artifactId>
+                <version>${qits.orchestrator-service-pacts-qits-containers-service.version}</version>
+            </dependency>
+            <dependency>
+                <!-- Test scope in `service`: a consumer's pact, verified by ConsumerPactVerificationTest. -->
                 <groupId>${project.groupId}</groupId>
                 <artifactId>qits-projects-service-pacts-qits-containers-service</artifactId>
                 <version>${qits.projects-service-pacts-qits-containers-service.version}</version>
             </dependency>
             <dependency>
-                <!-- Same as above: qits-workspaces-service's pact against this provider. -->
+                <!-- Test scope in `service`: a consumer's pact, verified by ConsumerPactVerificationTest. -->
                 <groupId>${project.groupId}</groupId>
                 <artifactId>qits-workspaces-service-pacts-qits-containers-service</artifactId>
                 <version>${qits.workspaces-service-pacts-qits-containers-service.version}</version>

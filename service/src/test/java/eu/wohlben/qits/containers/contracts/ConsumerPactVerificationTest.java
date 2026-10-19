@@ -34,9 +34,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * pins that jar as a test dependency, and qits-maintenance bumps the pin when the consumer releases
  * a changed pact. {@link ClasspathPactLoader} finds them all.
  *
- * <p><b>qits-projects-service and qits-workspaces-service are pinned</b> (ticket qits-1163), so
- * {@link ClasspathPactLoader#REQUIRED} is true and an empty classpath fails the build rather than
- * passing silently.
+ * <p><b>Pinned</b> (service/pom.xml, test scope): qits-bootstrap-cli, qits-orchestrator-service,
+ * qits-projects-service and qits-workspaces-service. {@link ClasspathPactLoader#REQUIRED} is true,
+ * so an empty classpath fails rather than skipping: a provider whose pinned pacts vanished has lost
+ * its dependency.
  *
  * <p>Each interaction runs against this {@code @QuarkusTest} application over real HTTP, as the
  * {@code %test} synthetic user — exactly as {@link GoldenMasterRecordingTest}'s calls run. Every
@@ -139,6 +140,11 @@ class ConsumerPactVerificationTest {
   @State(ProviderStates.NO_WORKSPACE_CONTAINER)
   Map<String, String> noWorkspaceContainer() {
     return states.params(ProviderStates.NO_WORKSPACE_CONTAINER);
+  }
+
+  @State(ProviderStates.NO_WORKSPACE_CONTAINER_IMAGE_MISSING)
+  Map<String, String> noWorkspaceContainerImageMissing() {
+    return states.params(ProviderStates.NO_WORKSPACE_CONTAINER_IMAGE_MISSING);
   }
 
   @State(ProviderStates.A_WORKSPACE_VOLUME)
