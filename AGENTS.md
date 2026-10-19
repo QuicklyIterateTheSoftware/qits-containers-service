@@ -383,9 +383,9 @@ qits-events-service:
   answer under `golden-masters/`. It compares by default; `-Dgolden.update=true` rewrites. A 204
   is recorded as `null`.
 - `ConsumerPactVerificationTest` verifies every pinned `pacts/<consumer>_qits-containers-service.json`
-  on the test classpath. None is pinned yet, so it passes empty (`@IgnoreNoPactsToVerify`). When
-  the first consumer pact jar is pinned, drop that annotation and set
-  `ClasspathPactLoader.REQUIRED` to true.
+  on the test classpath. qits-projects-service and qits-workspaces-service are pinned (qits-1163),
+  `ClasspathPactLoader.REQUIRED` is true, and the test carries no `@IgnoreNoPactsToVerify`: an empty
+  classpath now fails the build.
 
 Every resource method carries an `operationId`; a pact names it in `qits-call`. Both tests run under
 `FakeDriverProfile`. `release.yml`'s `contracts:` publishes the golden masters. The expected
