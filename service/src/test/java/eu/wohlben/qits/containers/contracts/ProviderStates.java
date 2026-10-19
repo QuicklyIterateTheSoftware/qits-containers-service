@@ -57,6 +57,16 @@ public class ProviderStates {
   public static final String A_RUNNING_WORKSPACE_CONTAINER = "a running workspace container";
 
   public static final String NO_WORKSPACE_CONTAINER = "no workspace container at the place";
+
+  /**
+   * Nothing at the workspace place, and the image the ensure names is one no registry holds: docker
+   * refuses the run with {@code manifest unknown}, which the ensure answers as a 409 {@code
+   * IMAGE_MISSING}. What qits-workspaces-service's adapter turns into its own "the image is not
+   * published" refusal. A state of its own because {@link #NO_WORKSPACE_CONTAINER} holds the 201.
+   */
+  public static final String NO_WORKSPACE_CONTAINER_IMAGE_MISSING =
+      "no workspace container, and an image the registry does not hold";
+
   public static final String A_WORKSPACE_VOLUME = "a workspace volume exists";
   public static final String NO_WORKSPACE_VOLUME = "no workspace volume of that name";
 
@@ -126,6 +136,7 @@ public class ProviderStates {
     states.put(NO_CONTAINER, this::noContainer);
     states.put(A_RUNNING_WORKSPACE_CONTAINER, () -> aRunningContainer(WORKSPACE_WORKLOAD));
     states.put(NO_WORKSPACE_CONTAINER, () -> place(WORKSPACE_WORKLOAD));
+    states.put(NO_WORKSPACE_CONTAINER_IMAGE_MISSING, this::noWorkspaceContainerImageMissing);
     states.put(A_WORKSPACE_VOLUME, this::aClaimedVolume);
     states.put(NO_WORKSPACE_VOLUME, this::noVolume);
     states.put(A_CLAIMED_VOLUME, this::aClaimedVolume);
@@ -194,6 +205,19 @@ public class ProviderStates {
   /** Nothing at {@code qits-workspaces/editor/contract-1}: the place an ensure creates. */
   private Setup noContainer() {
     return place();
+  }
+
+  /**
+   * Nothing at {@code qits-workspaces/workspace/contract-1}, and the next run refused the way docker
+   * refuses an image no registry serves — the text {@code ContainersResource}'s markers match.
+   */
+  private Setup noWorkspaceContainerImageMissing() {
+    driver
+        .get()
+        .scriptRun(
+            new ContainersDriver.Started(
+                false, "", "docker: Error response from daemon: manifest unknown: manifest unknown."));
+    return place(WORKSPACE_WORKLOAD);
   }
 
   /** {@code qits-workspaces} claims the volume {@code contract-home}. */

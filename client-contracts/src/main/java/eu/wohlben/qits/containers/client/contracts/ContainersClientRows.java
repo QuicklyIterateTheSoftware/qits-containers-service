@@ -50,8 +50,8 @@ final class ContainersClientRows {
   static final String CLAIMED_VOLUME = "a claimed volume";
   static final String NO_VOLUME = "no volume";
 
-  /** Not recorded: the delete door with {@code volumes=true}. */
-  static final String RUNNING_WITH_VOLUME = "a running container with a named volume";
+  /** The delete door with {@code volumes=true}: the same seed as {@link #RUNNING}, deleted with its volumes. */
+  static final String RUNNING_WITH_VOLUME = "a running container with its volumes";
 
   private static final Duration TIMEOUT = Duration.ofSeconds(10);
 
