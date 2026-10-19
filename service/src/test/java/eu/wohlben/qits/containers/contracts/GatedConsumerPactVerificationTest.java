@@ -3,7 +3,6 @@ package eu.wohlben.qits.containers.contracts;
 import au.com.dius.pact.provider.junit5.HttpTestTarget;
 import au.com.dius.pact.provider.junit5.PactVerificationContext;
 import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
-import au.com.dius.pact.provider.junitsupport.IgnoreNoPactsToVerify;
 import au.com.dius.pact.provider.junitsupport.Provider;
 import au.com.dius.pact.provider.junitsupport.State;
 import au.com.dius.pact.provider.junitsupport.loader.PactFilter;
@@ -24,14 +23,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * <b>Verifies the consumer interactions only a gated application can answer</b> — the states in
  * {@link ProviderStates#GATED}, against this application under {@link MachineGuardProfile}, where
  * the machine gate is on and the dev user is off. {@link ConsumerPactVerificationTest} verifies
- * every other state.
+ * every other state. qits-bootstrap-cli's auth-plane probe is the pinned pact that names it.
  */
 @QuarkusTest
 @TestProfile(MachineGuardProfile.class)
 @Provider(ConsumerPactVerificationTest.PROVIDER)
 @PactSource(ClasspathPactLoader.class)
 @PactFilter(ProviderStates.THE_MACHINE_GATE_IS_ON)
-@IgnoreNoPactsToVerify
 class GatedConsumerPactVerificationTest {
 
   static {
@@ -45,17 +43,13 @@ class GatedConsumerPactVerificationTest {
 
   @BeforeEach
   void target(PactVerificationContext context) {
-    if (context != null) {
-      context.setTarget(new HttpTestTarget(base.getHost(), base.getPort()));
-    }
+    context.setTarget(new HttpTestTarget(base.getHost(), base.getPort()));
   }
 
   @TestTemplate
   @ExtendWith(PactVerificationInvocationContextProvider.class)
   void gatedConsumerPactHolds(PactVerificationContext context) {
-    if (context != null) {
-      context.verifyInteraction();
-    }
+    context.verifyInteraction();
   }
 
   @AfterEach

@@ -1,0 +1,4 @@
+{
+  "code": "IMAGE_MISSING",
+  "message": "Could not start qits-ct-qits-workspaces-workspace-contract-1: [docker refused to start qits-ct-qits-workspaces-workspace-contract-1: docker: Error response from daemon: manifest unknown: manifest unknown.]"
+}

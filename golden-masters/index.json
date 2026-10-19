@@ -526,6 +526,42 @@
       ]
     },
     {
+      "name": "no workspace container, and an image the registry does not hold",
+      "slug": "no-workspace-container-and-an-image-the-registry-does-not-hold",
+      "params": {
+        "owner": "qits-workspaces",
+        "ref": "contract-1",
+        "workload": "workspace"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "ensureContainer",
+          "method": "PUT",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}",
+          "body": {
+            "spec": {
+              "image": "alpine:3",
+              "network": "qits-net",
+              "hostDockerSocket": false
+            },
+            "policy": {
+              "type": "EXPLICIT"
+            },
+            "recreate": "never"
+          },
+          "status": 409,
+          "file": "no-workspace-container-and-an-image-the-registry-does-not-hold/ensureContainer.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
       "name": "no workspace container at the place",
       "slug": "no-workspace-container-at-the-place",
       "params": {
@@ -556,6 +592,19 @@
             "ids": [
               "$.id"
             ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "getContainer",
+          "method": "GET",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}",
+          "status": 404,
+          "file": "no-workspace-container-at-the-place/getContainer.json",
+          "frozen": {
+            "ids": [],
             "instants": [],
             "strings": [],
             "listFilteredTo": null

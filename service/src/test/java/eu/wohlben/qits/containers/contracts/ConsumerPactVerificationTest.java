@@ -8,7 +8,6 @@ import au.com.dius.pact.core.model.ProviderState;
 import au.com.dius.pact.provider.junit5.HttpTestTarget;
 import au.com.dius.pact.provider.junit5.PactVerificationContext;
 import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
-import au.com.dius.pact.provider.junitsupport.IgnoreNoPactsToVerify;
 import au.com.dius.pact.provider.junitsupport.Provider;
 import au.com.dius.pact.provider.junitsupport.State;
 import au.com.dius.pact.provider.junitsupport.loader.PactFilter;
@@ -35,9 +34,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * pins that jar as a test dependency, and qits-maintenance bumps the pin when the consumer releases
  * a changed pact. {@link ClasspathPactLoader} finds them all.
  *
- * <p><b>No consumer pins a pact yet</b>, so {@code @IgnoreNoPactsToVerify} lets an empty classpath
- * pass and the loader logs that nothing was verified. When the first consumer's pact jar is pinned,
- * drop the annotation and set {@link ClasspathPactLoader#REQUIRED} to true.
+ * <p><b>Pinned</b> (service/pom.xml, test scope): qits-bootstrap-cli, qits-orchestrator-service,
+ * qits-projects-service and qits-workspaces-service. {@link ClasspathPactLoader#REQUIRED} is true,
+ * so an empty classpath fails rather than skipping: a provider whose pinned pacts vanished has lost
+ * its dependency.
  *
  * <p>Each interaction runs against this {@code @QuarkusTest} application over real HTTP, as the
  * {@code %test} synthetic user — exactly as {@link GoldenMasterRecordingTest}'s calls run. Every
@@ -54,7 +54,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @Provider(ConsumerPactVerificationTest.PROVIDER)
 @PactSource(ClasspathPactLoader.class)
 @PactFilter(value = ProviderStates.THE_MACHINE_GATE_IS_ON, filter = ExcludeStatesFilter.class)
-@IgnoreNoPactsToVerify
 class ConsumerPactVerificationTest {
 
   /** The provider's name in a pact: the repository name, not the application name. */
@@ -72,9 +71,6 @@ class ConsumerPactVerificationTest {
 
   @BeforeEach
   void target(PactVerificationContext context, Pact pact, Interaction interaction) {
-    if (context == null) {
-      return; // no pact to verify: @IgnoreNoPactsToVerify's single empty run
-    }
     String consumer = pact.getConsumer().getName();
     if (interaction.getProviderStates().isEmpty()) {
       fail(
@@ -116,9 +112,7 @@ class ConsumerPactVerificationTest {
   @TestTemplate
   @ExtendWith(PactVerificationInvocationContextProvider.class)
   void consumerPactHolds(PactVerificationContext context) {
-    if (context != null) {
-      context.verifyInteraction();
-    }
+    context.verifyInteraction();
   }
 
   // --- the states: each one line into the registry -------------------------------------------
@@ -146,6 +140,11 @@ class ConsumerPactVerificationTest {
   @State(ProviderStates.NO_WORKSPACE_CONTAINER)
   Map<String, String> noWorkspaceContainer() {
     return states.params(ProviderStates.NO_WORKSPACE_CONTAINER);
+  }
+
+  @State(ProviderStates.NO_WORKSPACE_CONTAINER_IMAGE_MISSING)
+  Map<String, String> noWorkspaceContainerImageMissing() {
+    return states.params(ProviderStates.NO_WORKSPACE_CONTAINER_IMAGE_MISSING);
   }
 
   @State(ProviderStates.A_WORKSPACE_VOLUME)

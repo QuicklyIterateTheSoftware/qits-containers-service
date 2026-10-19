@@ -129,6 +129,15 @@
              A re-recording changes the jar's version, and this line moves with it. -->
         <qits.containers-golden-masters.version>2026.1018.185227</qits.containers-golden-masters.version>
 
+        <!-- THE CONSUMER PACTS this provider verifies (qits-1149): each consumer publishes
+             `pacts/<consumer>_qits-containers-service.json` as `<consumer>-pacts-qits-containers-service`,
+             and ConsumerPactVerificationTest loads every one off the test classpath. Exact, never a
+             range: qits-maintenance bumps each when its consumer releases a changed pact. -->
+        <qits.bootstrap-cli-pacts-qits-containers-service.version>2026.1018.185226</qits.bootstrap-cli-pacts-qits-containers-service.version>
+        <qits.orchestrator-service-pacts-qits-containers-service.version>2026.1018.172917</qits.orchestrator-service-pacts-qits-containers-service.version>
+        <qits.projects-service-pacts-qits-containers-service.version>2026.1019.40426</qits.projects-service-pacts-qits-containers-service.version>
+        <qits.workspaces-service-pacts-qits-containers-service.version>2026.1019.70413</qits.workspaces-service-pacts-qits-containers-service.version>
+
         <!-- The docker layer: the spec types, the label namespace, the argv, the process runner, the
              driver and the pure GC decisions, released out of qits-containers-javalib
              (eu.wohlben.qits.containers.driver). Plain Java with jboss-logging alone, so a runner
@@ -216,6 +225,30 @@
                 <groupId>${project.groupId}</groupId>
                 <artifactId>qits-containers-golden-masters</artifactId>
                 <version>${qits.containers-golden-masters.version}</version>
+            </dependency>
+            <dependency>
+                <!-- Test scope in `service`: a consumer's pact, verified by ConsumerPactVerificationTest. -->
+                <groupId>${project.groupId}</groupId>
+                <artifactId>qits-bootstrap-cli-pacts-qits-containers-service</artifactId>
+                <version>${qits.bootstrap-cli-pacts-qits-containers-service.version}</version>
+            </dependency>
+            <dependency>
+                <!-- Test scope in `service`: a consumer's pact, verified by ConsumerPactVerificationTest. -->
+                <groupId>${project.groupId}</groupId>
+                <artifactId>qits-orchestrator-service-pacts-qits-containers-service</artifactId>
+                <version>${qits.orchestrator-service-pacts-qits-containers-service.version}</version>
+            </dependency>
+            <dependency>
+                <!-- Test scope in `service`: a consumer's pact, verified by ConsumerPactVerificationTest. -->
+                <groupId>${project.groupId}</groupId>
+                <artifactId>qits-projects-service-pacts-qits-containers-service</artifactId>
+                <version>${qits.projects-service-pacts-qits-containers-service.version}</version>
+            </dependency>
+            <dependency>
+                <!-- Test scope in `service`: a consumer's pact, verified by ConsumerPactVerificationTest. -->
+                <groupId>${project.groupId}</groupId>
+                <artifactId>qits-workspaces-service-pacts-qits-containers-service</artifactId>
+                <version>${qits.workspaces-service-pacts-qits-containers-service.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.zonky.test</groupId>

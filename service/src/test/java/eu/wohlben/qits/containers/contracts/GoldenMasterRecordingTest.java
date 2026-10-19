@@ -212,6 +212,17 @@ class GoldenMasterRecordingTest {
               ENSURE_BODY,
               201),
           Interaction.of(
+              ProviderStates.NO_WORKSPACE_CONTAINER, "getContainer", "GET", PLACE, Map.of(), null,
+              404),
+          Interaction.of(
+              ProviderStates.NO_WORKSPACE_CONTAINER_IMAGE_MISSING,
+              "ensureContainer",
+              "PUT",
+              PLACE,
+              Map.of(),
+              ENSURE_BODY,
+              409),
+          Interaction.of(
               ProviderStates.A_RUNNING_WORKSPACE_CONTAINER,
               "getContainer",
               "GET",
