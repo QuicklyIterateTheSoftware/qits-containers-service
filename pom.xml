@@ -94,7 +94,7 @@
              @Uncaused) that every row this service writes has to decide about — see ArchRulesTest —
              and its own datasource, persistence unit and Flyway lineage. Adding it later would be a
              flag day: a second store appears in the deployment spec and in every suite at once. -->
-        <qits.eventstream.version>2026.1019.123026</qits.eventstream.version>
+        <qits.eventstream.version>2026.1027.101950</qits.eventstream.version>
 
         <!-- The user-story framework (test scope). This repository's userflow catalogue is six IT
              classes on one profile — api/TokenValidationBootstrapIT plus service/…/stories/** — so
@@ -121,7 +121,7 @@
         <!-- 2026.1018.135552 is the release that brought Via (qits-1163): client-contracts takes
              it in COMPILE scope, so a consumer of that jar inherits it at test scope. -->
         <qits.pact-consumer.version>2026.1019.82625</qits.pact-consumer.version>
-        <qits.idp-golden-masters.version>2026.1022.183304</qits.idp-golden-masters.version>
+        <qits.idp-golden-masters.version>2026.1027.165632</qits.idp-golden-masters.version>
         <!-- This repository's OWN golden masters, as released (qits-1163). The platform packages
              golden-masters/ into that jar from the release step, so no module of this reactor
              builds it and client-contracts has to pin a released one: 2026.1010.134141, the
@@ -135,7 +135,7 @@
              range: qits-maintenance bumps each when its consumer releases a changed pact. -->
         <qits.bootstrap-cli-pacts-qits-containers-service.version>2026.1018.185226</qits.bootstrap-cli-pacts-qits-containers-service.version>
         <qits.orchestrator-service-pacts-qits-containers-service.version>2026.1018.172917</qits.orchestrator-service-pacts-qits-containers-service.version>
-        <qits.projects-service-pacts-qits-containers-service.version>2026.1019.190811</qits.projects-service-pacts-qits-containers-service.version>
+        <qits.projects-service-pacts-qits-containers-service.version>2026.1027.63255</qits.projects-service-pacts-qits-containers-service.version>
         <qits.workspaces-service-pacts-qits-containers-service.version>2026.1020.105843</qits.workspaces-service-pacts-qits-containers-service.version>
 
         <!-- The docker layer: the spec types, the label namespace, the argv, the process runner, the
