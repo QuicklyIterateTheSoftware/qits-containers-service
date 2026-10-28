@@ -135,8 +135,8 @@
              range: qits-maintenance bumps each when its consumer releases a changed pact. -->
         <qits.bootstrap-cli-pacts-qits-containers-service.version>2026.1018.185226</qits.bootstrap-cli-pacts-qits-containers-service.version>
         <qits.orchestrator-service-pacts-qits-containers-service.version>2026.1018.172917</qits.orchestrator-service-pacts-qits-containers-service.version>
-        <qits.projects-service-pacts-qits-containers-service.version>2026.1027.63255</qits.projects-service-pacts-qits-containers-service.version>
-        <qits.workspaces-service-pacts-qits-containers-service.version>2026.1020.105843</qits.workspaces-service-pacts-qits-containers-service.version>
+        <qits.projects-service-pacts-qits-containers-service.version>2026.1028.163552</qits.projects-service-pacts-qits-containers-service.version>
+        <qits.workspaces-service-pacts-qits-containers-service.version>2026.1028.163502</qits.workspaces-service-pacts-qits-containers-service.version>
 
         <!-- The docker layer: the spec types, the label namespace, the argv, the process runner, the
              driver and the pure GC decisions, released out of qits-containers-javalib
