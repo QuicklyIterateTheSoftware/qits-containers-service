@@ -71,7 +71,7 @@
              names the driver as a string, so a driver that moved without the rule would pass a
              build it should fail. -->
         <qits.db-core.version>2026.1002.70617</qits.db-core.version>
-        <qits.arch-rules.version>2026.1026.133840</qits.arch-rules.version>
+        <qits.arch-rules.version>2026.1030.30851</qits.arch-rules.version>
 
         <!-- Machine identity, released out of the same libs/qits-integrations-quarkus train. It is
              the fourth platform jar this repo takes and the one AGENTS.md's "nothing else may
