@@ -58,3 +58,6 @@ resources: postgresql:db, postgresql:eventstream:qits_containers_eventstream, id
 # Liveness answers UP with an empty check list — an orchestrator that boots and cannot read its
 # registry would pass it, and that container answers about places it has no rows for.
 health_path: /containers/q/health/ready
+
+# The docker socket (qits-765): the deployer adds the socket's group, read from the socket itself.
+binds: /var/run/docker.sock:/var/run/docker.sock
