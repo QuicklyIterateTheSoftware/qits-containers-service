@@ -81,7 +81,7 @@
              answer invented here would be the interim static token the platform has a standing
              decision against. It brings no server and no transport: quarkus-oidc validates the
              bearer and this jar only reads the identity that validation leaves behind. -->
-        <qits.auth-core.version>2026.1012.173247</qits.auth-core.version>
+        <qits.auth-core.version>2026.1031.63225</qits.auth-core.version>
 
         <!-- Service-to-service HTTP that says who is calling: QitsHttpClients.wrap turns a raw
              java.net.http.HttpClient into one that opens a CLIENT span and sends traceparent plus
