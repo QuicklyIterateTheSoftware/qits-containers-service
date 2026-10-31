@@ -215,7 +215,7 @@ class ContainersClientProducer {
 
   @Produces @Singleton
   ContainersClient client() {
-    return new ContainersClient(url, request, ensure, () -> tokens.forAudience("qits-containers"));
+    return new ContainersClient(url, request, ensure, () -> tokens.forAudience("qits-platform"));
   }
 }
 ```
@@ -232,7 +232,7 @@ REST client gets from Quarkus and this one otherwise would not:
 ```java
 @Inject QitsHttpClients clients;
 …
-return new ContainersClient(url, request, ensure, () -> tokens.forAudience("qits-containers"), clients);
+return new ContainersClient(url, request, ensure, () -> tokens.forAudience("qits-platform"), clients);
 ```
 
 The four-argument constructor still builds the same client unwrapped — nothing that already calls
