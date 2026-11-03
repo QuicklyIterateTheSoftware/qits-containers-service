@@ -202,6 +202,21 @@ exempt, including the ones that "cannot" block.
   observation onto a row deleted a week ago while the container it describes belongs to the row
   running now.
 
+## Identity in the suite and in dev mode (epic qits-543, qits-1361)
+
+**The suite does not use forward-auth.** A `@QuarkusTest` that is not about the bearer names its
+caller with `@TestSecurity` and the role it means (`qits:system` for the service routes); the gate
+suites (`MachineGuardProfile`) and the packaged stories carry real bearers (`MachineTokens`,
+`MockIdp`). The test config blanks the `%test` dev user and renames the forward headers
+(`%test.qits.auth.forward.*` in `service/src/test/resources/application.properties`, which go with
+qits-1338), so a header-less request is anonymous and a stray `X-Qits-User` authenticates nothing.
+
+**Dev mode needs a bearer.** The `%dev` dev user goes with qits-1338, and `%dev` keeps the machine
+gate and the OIDC tenant off, so every `@RolesAllowed` route in `quarkus:dev` answers 401 until the
+tenant is pointed at an idp. Read it with a token, for example
+`curl -H "Authorization: Bearer $(qits-token qits-platform)" ...`, or through the `qits` CLI against
+a deployed instance.
+
 ## The worker, and the brackets
 
 **One worker.** `ContainerObserver` owns a bare daemon ticker (`ct-observation-ticker`) and a

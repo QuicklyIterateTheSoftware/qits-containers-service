@@ -2,7 +2,7 @@ package eu.wohlben.qits.containers.contracts.consumer;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
@@ -22,15 +23,18 @@ import org.junit.jupiter.api.Test;
  * <b>The completeness guard for ticket qits-1149</b>: a client call against a qits service with no
  * pact row must fail a build, and the set of calls comes from the code, not from a literal.
  *
- * <p>qits-containers-service builds no client of a qits service. Its one outbound qits call is the
- * one the framework makes: the quarkus-oidc tenant's discovery read and the JWKS read its {@code
- * jwks_uri} names, both rows of {@link IdpPactTest#PACT}. This class pins that claim to the build:
+ * <p>qits-containers-service builds no client of a qits service. Its outbound qits calls are the
+ * ones the frameworks make: the quarkus-oidc tenant's discovery read and the JWKS read its {@code
+ * jwks_uri} names, plus the named {@code quarkus-oidc-client} {@code qits}'s client-credentials
+ * mint (qits-543/qits-1330) — the token this service presents to its peers, spent by the
+ * qits-eventstream library rather than by any class of this source tree. All three are rows of
+ * {@link IdpPactTest#PACT}. This class pins that claim to the build:
  *
  * <ul>
  *   <li>no production class reaches a way to dial out — {@code java.net.http.HttpClient}, {@code
  *       HttpURLConnection}, a Vert.x {@code WebClient} or {@code HttpClient}, a MicroProfile REST
  *       client, or {@code quarkus-oidc-client}'s {@code OidcClient} — outside the named exclusions;
- *   <li>there is no client-credentials mint ({@code quarkus-oidc-client} is not on the classpath);
+ *   <li>the named client {@code qits} is the only client-credentials mint, and its mint is rowed;
  *   <li>the tenant {@code application.properties} configures has its discovery and JWKS rows
  *       recorded in the idp pact.
  * </ul>
@@ -89,15 +93,6 @@ class OutboundCallGuardTest {
   }
 
   @Test
-  void thereIsNoClientCredentialsMintToPact() {
-    assertThrows(
-        ClassNotFoundException.class,
-        () -> Class.forName("io.quarkus.oidc.client.OidcClient"),
-        "quarkus-oidc-client is on the classpath: the POST /idp/token mint needs a row against"
-            + " qits-idp's 'a service client calling its peers'");
-  }
-
-  @Test
   void theConfiguredOidcTenantsReadsArePacted() throws IOException {
     Properties properties = new Properties();
     // The shipped file, not the classpath's: a test resource of the same name shadows it there.
@@ -106,15 +101,55 @@ class OutboundCallGuardTest {
     }
     String server = properties.getProperty("quarkus.oidc.auth-server-url", "");
     assertTrue(server.contains("//idp.qits."), "the tenant reads qits-idp at its edge host: " + server);
-    Set<String> pacted =
-        IdpPactTest.PACT.recorded().stream()
+    Set<String> rowed =
+        IdpPactTest.PACT.rows().stream()
             .map(GoldenInteraction::operationId)
             .collect(Collectors.toSet());
+    assertTrue(rowed.contains("getJwks"), "the tenant reads the JWKS: row getJwks");
     boolean discovery =
         Boolean.parseBoolean(properties.getProperty("quarkus.oidc.discovery-enabled", "true"));
+    if (discovery) {
+      assertTrue(
+          rowed.contains("getOpenIdConfiguration"),
+          "the tenant discovers: row getOpenIdConfiguration in IdpPactTest");
+    } else {
+      assertFalse(
+          rowed.contains("getOpenIdConfiguration"),
+          "discovery is off, so the tenant never reads the discovery document: drop its row");
+    }
+  }
+
+  /**
+   * The one token mint this service makes is the named client {@code qits}
+   * (qits-543/qits-1330), and it is rowed: {@code issueToken} in {@link IdpPactTest}, run through
+   * the real client by {@code IdpTokenMintPactTest}. Any other client name would be a second
+   * identity nobody pacted.
+   */
+  @Test
+  void theQitsClientIsTheOnlyMintAndItIsRowed() throws Exception {
+    Properties properties = new Properties();
+    try (InputStream in = Files.newInputStream(Path.of("src/main/resources/application.properties"))) {
+      properties.load(in);
+    }
+    Class.forName("io.quarkus.oidc.client.OidcClient");
+    Set<String> clientKeys =
+        properties.stringPropertyNames().stream()
+            .filter(name -> name.startsWith("quarkus.oidc-client."))
+            .collect(Collectors.toCollection(TreeSet::new));
+    assertFalse(clientKeys.isEmpty(), "the qits client is configured in application.properties");
     assertEquals(
-        discovery ? Set.of("getOpenIdConfiguration", "getJwks") : Set.of("getJwks"),
-        pacted,
-        "the oidc tenant's reads of " + server + " against the recorded idp rows");
+        Set.of(),
+        clientKeys.stream()
+            .filter(name -> !name.startsWith("quarkus.oidc-client.qits."))
+            .collect(Collectors.toSet()),
+        "only the named client `qits` mints tokens here");
+    assertEquals("client", properties.getProperty("quarkus.oidc-client.qits.grant.type"));
+    assertEquals(
+        "qits-platform",
+        properties.getProperty("quarkus.oidc-client.qits.grant-options.client.audience"));
+    assertEquals("token", properties.getProperty("quarkus.oidc-client.qits.token-path"));
+    assertTrue(
+        IdpPactTest.PACT.rows().stream().anyMatch(row -> row.operationId().equals("issueToken")),
+        "the qits client mints at qits-idp: row POST /idp/token (issueToken) in IdpPactTest");
   }
 }

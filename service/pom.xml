@@ -7,7 +7,7 @@
     <parent>
         <groupId>eu.wohlben.qits</groupId>
         <artifactId>qits-containers</artifactId>
-        <version>2026.1102.75053</version>
+        <version>2026.1103.143113</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -100,6 +100,16 @@
             <artifactId>quarkus-oidc</artifactId>
         </dependency>
         <dependency>
+            <!-- The token this service PRESENTS (qits-543/qits-1328): the named client `qits`, its
+                 own qits-idp service client by client credentials, configured in
+                 application.properties from the deployer's idp:client resource. It is a separate
+                 extension from quarkus-oidc above and enables no tenant of its own: it only lets
+                 the qits-eventstream library mint this process's own bearer through
+                 OidcClients.getClient("qits"). -->
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-oidc-client</artifactId>
+        </dependency>
+        <dependency>
             <!-- SecurityIdentity itself. Named rather than taken transitively, because this
                  module's own code reads one: the owner in every path is the token's subject. -->
             <groupId>io.quarkus</groupId>
@@ -116,6 +126,14 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- @TestSecurity: the suites that are not about the bearer state who is calling with
+                 it, rather than leaning on qits-auth-core's %test forward-auth dev user, which goes
+                 with qits-1338 (qits-1361). -->
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-test-security</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

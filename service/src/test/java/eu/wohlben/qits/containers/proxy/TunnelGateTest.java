@@ -8,6 +8,7 @@ import eu.wohlben.qits.containers.api.FakeDriverProfile;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
 import java.net.URI;
 import java.time.Duration;
@@ -27,6 +28,9 @@ import org.junit.jupiter.api.Test;
  * another: a socket that refuses, a route that 404s, and a bean that binds nothing.
  */
 @QuarkusTest
+// The caller is stated, not inherited from forward-auth's %test dev user (qits-1361): past the
+// socket's role check, so what is measured is the gate behind it.
+@TestSecurity(user = "qits-ci", roles = "qits:system")
 @TestProfile(FakeDriverProfile.class)
 class TunnelGateTest {
 

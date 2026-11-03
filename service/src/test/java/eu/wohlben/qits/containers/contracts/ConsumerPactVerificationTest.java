@@ -16,6 +16,7 @@ import eu.wohlben.qits.containers.api.FakeDriverProfile;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
 import java.net.URL;
 import java.util.List;
@@ -40,16 +41,20 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * its dependency.
  *
  * <p>Each interaction runs against this {@code @QuarkusTest} application over real HTTP, as the
- * {@code %test} synthetic user — exactly as {@link GoldenMasterRecordingTest}'s calls run. Every
- * {@code @State} method delegates to {@link ProviderStates}; {@link #target} fails an unknown state,
- * and an interaction without {@code comments.references.qits-call} or {@code qits-trigger}.
+ * {@code @TestSecurity} caller holding {@code qits:system} — exactly as {@link
+ * GoldenMasterRecordingTest}'s calls run. Every {@code @State} method delegates to {@link
+ * ProviderStates}; {@link #target} fails an unknown state, and an interaction without {@code
+ * comments.references.qits-call} or {@code qits-trigger}.
  *
  * <p>The gated states ({@link ProviderStates#GATED}) are filtered out here: this application runs
- * with the dev user, so it never answers 401. {@link GatedConsumerPactVerificationTest} verifies
- * them. {@link ExcludeStatesFilter} keeps an interaction that names no state, and {@link #target}
+ * with the machine gate off and a stated caller, so it never answers 401. {@link
+ * GatedConsumerPactVerificationTest} verifies them. {@link ExcludeStatesFilter} keeps an interaction that names no state, and {@link #target}
  * fails it: every interaction must name a provider state.
  */
 @QuarkusTest
+// The caller is stated, not inherited from forward-auth's %test dev user (qits-1361): a calling
+// service holding the system role its consumers present.
+@TestSecurity(user = "qits-ci", roles = "qits:system")
 @TestProfile(FakeDriverProfile.class)
 @Provider(ConsumerPactVerificationTest.PROVIDER)
 @PactSource(ClasspathPactLoader.class)

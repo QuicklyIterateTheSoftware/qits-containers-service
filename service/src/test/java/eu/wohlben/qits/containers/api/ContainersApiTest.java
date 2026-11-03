@@ -17,6 +17,7 @@ import eu.wohlben.qits.containers.persistence.CtVolumeRepository;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import io.quarkus.test.security.TestSecurity;
 import io.restassured.http.ContentType;
 import jakarta.inject.Inject;
 import java.time.Instant;
@@ -40,6 +41,9 @@ import org.junit.jupiter.api.Test;
  * hold a token for every call would say nothing about either.
  */
 @QuarkusTest
+// The caller is stated, not inherited from forward-auth's %test dev user (qits-1361): the owner
+// every path here names, holding the system role a calling service holds.
+@TestSecurity(user = "qits-ci", roles = "qits:system")
 @TestProfile(FakeDriverProfile.class)
 class ContainersApiTest {
 

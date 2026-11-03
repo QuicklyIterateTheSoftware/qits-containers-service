@@ -13,6 +13,7 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import io.quarkus.test.security.TestSecurity;
 import io.restassured.http.ContentType;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
@@ -43,6 +44,9 @@ import org.junit.jupiter.api.Test;
  * it, which is why splitting them would only assert the seams.
  */
 @QuarkusTest
+// The caller is stated, not inherited from forward-auth's %test dev user (qits-1361): past the
+// socket's role check, so what is measured is the secret and the row behind it.
+@TestSecurity(user = "qits-ci", roles = "qits:system")
 @TestProfile(TunnelEnabledProfile.class)
 class TunnelDataPlaneTest {
 

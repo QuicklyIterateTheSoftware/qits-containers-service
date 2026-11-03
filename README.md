@@ -508,6 +508,14 @@ two instances in `docker ps`; `QITS_CONTAINERS_NETWORK` and `QITS_CONTAINERS_SHA
 what the boot step makes sure of; `QITS_CONTAINERS_PROXY_ENABLED=true` switches the data plane on,
 and no deployment sets it yet.
 
+`QITS_RESOURCE_IDP_URL` / `_CLIENT_ID` / `_CLIENT_SECRET` are the `idp:client` resource
+`.config/qits/deployments.yml` declares (id `<env>-qits-containers`), already read by
+`DockerCredentials` for image pulls. The token this service PRESENTS to its peers
+(qits-543/qits-1328) is the same credential, read a second time by the named `quarkus-oidc-client`
+`qits`: its own `qits:system` bearer, minted by client credentials and spent by the qits-eventstream
+library through `OidcClients.getClient("qits")` rather than by any class here (qits-1330). Off under
+`%dev` and `%test`.
+
 ### What a boot does, in order
 
 1. **`SharedResources`** makes the three shared volumes (`qits_shared_*`) and asks whether
