@@ -119,6 +119,14 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <!-- @TestSecurity: the suites that are not about the bearer state who is calling with
+                 it, rather than leaning on qits-auth-core's %test forward-auth dev user, which goes
+                 with qits-1338 (qits-1361). -->
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-test-security</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <!-- THE CLIENT, UNDER TEST AGAINST THE REAL SURFACE — and test scope is the whole
                  arrangement. The wire is the contract between two jars that never see each other:
                  `client` cannot depend on `service` (it would drag the deployable into every

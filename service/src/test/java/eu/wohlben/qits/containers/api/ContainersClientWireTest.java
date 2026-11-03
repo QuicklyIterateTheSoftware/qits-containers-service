@@ -35,6 +35,7 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
 import java.net.URL;
 import java.time.Duration;
@@ -67,6 +68,9 @@ import org.junit.jupiter.api.Test;
  * {@code TokenSource} is {@link ContainersClientGuardedWireTest}.
  */
 @QuarkusTest
+// The caller is stated, not inherited from forward-auth's %test dev user (qits-1361): the owner
+// every path here names, holding the system role a calling service holds.
+@TestSecurity(user = "qits-ci", roles = "qits:system")
 @TestProfile(FakeDriverProfile.class)
 class ContainersClientWireTest {
 

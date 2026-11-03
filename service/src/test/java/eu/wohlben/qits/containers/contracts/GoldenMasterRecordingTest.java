@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import eu.wohlben.qits.containers.api.FakeDriverProfile;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import io.quarkus.test.security.TestSecurity;
 import io.restassured.response.Response;
 import jakarta.inject.Inject;
 import java.io.IOException;
@@ -34,7 +35,7 @@ import org.junit.jupiter.api.Test;
  * root, the source of the published golden-master artifact consumers write their pacts against.
  *
  * <p>For each (state, operation) pair in {@link #INTERACTIONS} it runs the state ({@link
- * ProviderStates}), calls the endpoint through REST-assured as the {@code %test} dev user, keeps
+ * ProviderStates}), calls the endpoint through REST-assured as the @TestSecurity caller, keeps
  * only the list entries the state created, freezes ids, instants and unique tokens ({@link
  * Freezer}) and renders {@code golden-masters/<state-slug>/<operationId>.json}; then it renders
  * {@code golden-masters/index.json} describing all of them.
@@ -45,6 +46,9 @@ import org.junit.jupiter.api.Test;
  * GoldenFiles}.
  */
 @QuarkusTest
+// The caller is stated, not inherited from forward-auth's %test dev user (qits-1361): a calling
+// service holding the system role its consumers present.
+@TestSecurity(user = "qits-ci", roles = "qits:system")
 @TestProfile(FakeDriverProfile.class)
 class GoldenMasterRecordingTest {
 

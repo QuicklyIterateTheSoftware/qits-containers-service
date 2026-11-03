@@ -16,6 +16,7 @@ import eu.wohlben.qits.containers.spec.ContainerLabels;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import io.quarkus.test.security.TestSecurity;
 import io.restassured.http.ContentType;
 import jakarta.inject.Inject;
 import java.time.Duration;
@@ -39,6 +40,9 @@ import org.junit.jupiter.api.Test;
  * this service will not act on gets.
  */
 @QuarkusTest
+// The caller is stated, not inherited from forward-auth's %test dev user (qits-1361): a calling
+// service holding the system role the collector routes demand.
+@TestSecurity(user = "qits-ci", roles = "qits:system")
 @TestProfile(FakeDriverProfile.class)
 class GcApiTest {
 
