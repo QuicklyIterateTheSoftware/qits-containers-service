@@ -100,7 +100,7 @@
              @Uncaused) that every row this service writes has to decide about — see ArchRulesTest —
              and its own datasource, persistence unit and Flyway lineage. Adding it later would be a
              flag day: a second store appears in the deployment spec and in every suite at once. -->
-        <qits.eventstream.version>2026.1103.140652</qits.eventstream.version>
+        <qits.eventstream.version>2026.1103.201958</qits.eventstream.version>
 
         <!-- The user-story framework (test scope). This repository's userflow catalogue is six IT
              classes on one profile — api/TokenValidationBootstrapIT plus service/…/stories/** — so
@@ -141,8 +141,8 @@
              range: qits-maintenance bumps each when its consumer releases a changed pact. -->
         <qits.bootstrap-cli-pacts-qits-containers-service.version>2026.1018.185226</qits.bootstrap-cli-pacts-qits-containers-service.version>
         <qits.orchestrator-service-pacts-qits-containers-service.version>2026.1018.172917</qits.orchestrator-service-pacts-qits-containers-service.version>
-        <qits.projects-service-pacts-qits-containers-service.version>2026.1031.154625</qits.projects-service-pacts-qits-containers-service.version>
-        <qits.workspaces-service-pacts-qits-containers-service.version>2026.1031.185330</qits.workspaces-service-pacts-qits-containers-service.version>
+        <qits.projects-service-pacts-qits-containers-service.version>2026.1103.180437</qits.projects-service-pacts-qits-containers-service.version>
+        <qits.workspaces-service-pacts-qits-containers-service.version>2026.1103.171816</qits.workspaces-service-pacts-qits-containers-service.version>
 
         <!-- The docker layer: the spec types, the label namespace, the argv, the process runner, the
              driver and the pure GC decisions, released out of qits-containers-javalib
