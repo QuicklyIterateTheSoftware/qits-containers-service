@@ -1,6 +1,7 @@
 package eu.wohlben.qits.containers.docker;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -17,16 +18,14 @@ import org.junit.jupiter.api.Test;
  * about what {@code META-INF/microprofile-config.properties} actually ships. A bare alias could be
  * restored to that file and every assertion in that suite would still pass.
  *
- * <p><b>What is being guarded.</b> Every one of these endpoints carries the environment, derived
- * from {@code QITS_ENVIRONMENT} rather than written down. The mirror used to be bare because a
- * platform-tier service was one process for the whole estate; the plane is deleted and it is an
- * ordinary environment application now. The registry never had that excuse — it was a hardcoded
- * {@code dev-}. Both are derived, and if either stops being so, this fails.
+ * <p><b>What is being guarded</b> (qits-1409, feature qits-1406). The builder dials the edge like
+ * every target's builder: the platform's registry and mirror at {@code registry.qits.<domain>} and
+ * {@code mirror.qits.<domain>} over TLS, and the three bare upstream registries mapped onto the
+ * mirror's edge namespaces. No endpoint names a wire alias, none carries {@code QITS_ENVIRONMENT},
+ * and none is granted plain HTTP. A restored {@code <env>-qits-mirror:8080} rewrite fails here.
  *
- * <p>QITS_ENVIRONMENT is unset under test, so the {@code :dev} fallback is what resolves here. The
- * assertions are on the RESOLVED strings on purpose: a default that stopped deriving and was
- * hardcoded back to {@code dev-} would read identically on this suite, which is why the last test
- * asserts against the raw property text instead.
+ * <p>The assertions are on the RESOLVED strings, and the last one on the raw text, because a
+ * domain typed in rather than derived would resolve identically on this suite.
  */
 class BuildkitShippedConfigTest {
 
@@ -41,45 +40,33 @@ class BuildkitShippedConfigTest {
   }
 
   @Test
-  void everyRegistryMirrorNamesATierQualifiedUpstream() {
+  void everyRegistryMirrorNamesTheMirrorsEdgeHost() {
     List<String> mirrors = config().getValues(MIRRORS, String.class);
 
     assertEquals(
         List.of(
-            "registry.qits." + DOMAIN + "=dev-qits-artifacts:8080",
-            "mirror.qits." + DOMAIN + "=dev-qits-mirror:8080",
-            "quay.io=dev-qits-mirror:8080/quay",
-            "registry.access.redhat.com=dev-qits-mirror:8080/redhat",
-            "docker.io=dev-qits-mirror:8080/hub"),
+            "quay.io=mirror.qits." + DOMAIN + "/quay",
+            "registry.access.redhat.com=mirror.qits." + DOMAIN + "/redhat",
+            "docker.io=mirror.qits." + DOMAIN + "/hub"),
         mirrors,
-        "every upstream is <env>-<application>; a bare one resolves nowhere on qits-net and fails"
-            + " every base pull with a DNS error");
+        "every upstream maps onto the mirror's edge host; the platform's own two names need no"
+            + " entry, they are pulled from directly");
   }
 
   @Test
-  void theHttpRegistriesAreTheSameTwoEndpointsAndTierQualifiedToo() {
-    assertEquals(
-        List.of("dev-qits-artifacts:8080", "dev-qits-mirror:8080"),
-        config().getValues(REGISTRIES, String.class),
-        "a plain-HTTP endpoint the builder is not told about is a TLS attempt against a listener"
-            + " that speaks none");
+  void noPlainHttpRegistryIsShipped() {
+    assertTrue(
+        config().getOptionalValues(REGISTRIES, String.class).isEmpty(),
+        "the edge speaks TLS: a plain-HTTP grant could only name an in-network alias again");
   }
 
   @Test
-  void theTierIsDERIVEDFromTheEnvironmentAndNotWrittenDown() {
-    // The raw text, before expansion. This is the assertion the two above cannot make: they would
-    // both pass against a file that had `dev-` typed into it, which is exactly the regression worth
-    // catching — it works on this platform and names the wrong tier on every other one.
+  void theDomainIsDERIVEDAndNoAliasOrTierIsWrittenDown() {
     String raw = rawProperty(MIRRORS);
     assertTrue(
-        raw.contains("${QITS_ENVIRONMENT:dev}-qits-mirror"),
-        "the mirror's tier must be derived, not typed: " + raw);
-    assertTrue(
-        raw.contains("${QITS_ENVIRONMENT:dev}-qits-artifacts"),
-        "and so must the registry's: " + raw);
-    assertTrue(
-        rawProperty(REGISTRIES).contains("${QITS_ENVIRONMENT:dev}-"),
-        "including the http-registries list, which is the same two endpoints restated");
+        raw.contains("mirror.qits.${QITS_DOMAIN}/"), "the domain must be derived, not typed: " + raw);
+    assertFalse(raw.contains("QITS_ENVIRONMENT"), "no peer address carries the tier: " + raw);
+    assertFalse(raw.contains(":8080"), "no wire alias: " + raw);
   }
 
   /** One property as the shipped file spells it, unexpanded. */

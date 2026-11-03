@@ -88,9 +88,13 @@ public class PlatformBuildkit {
   @ConfigProperty(name = "qits.containers.buildkit.registry-mirrors")
   List<String> registryMirrors;
 
-  /** Registries buildkitd speaks plain HTTP to — the platform's own, on its own network. */
+  /**
+   * Registries buildkitd speaks plain HTTP to. None by default: the builder pulls the platform's
+   * registry and mirror at their edge hosts over TLS (qits-1409), so only a deployment with a
+   * plain-HTTP registry of its own names one.
+   */
   @ConfigProperty(name = "qits.containers.buildkit.http-registries")
-  List<String> httpRegistries;
+  Optional<List<String>> httpRegistries = Optional.empty();
 
   /** What the builder's own gc keeps — the standing bound; the orchestrator's sweep is the belt. */
   @ConfigProperty(name = "qits.containers.buildkit.keep-storage-bytes")
@@ -252,9 +256,9 @@ public class PlatformBuildkit {
   /**
    * buildkitd.toml, rendered rather than committed: every value in it is one of this service's own
    * config keys, and a file shipped in an image would be a second place for the registry topology
-   * to live. The mirrors are what keep every committed Dockerfile's {@code FROM} lines working —
-   * they name edge vhosts only the host's network namespace resolves, and buildkitd is on the
-   * platform network, so the rewrite to the in-network aliases happens here and nowhere else.
+   * to live. The mirrors map the bare upstream registries onto the platform mirror's edge
+   * namespaces, so a committed {@code FROM quay.io/…} never dials upstream; the platform's own
+   * registry and mirror are pulled at their edge hosts directly and need no entry.
    */
   String buildkitdToml() {
     StringBuilder toml = new StringBuilder();
@@ -290,7 +294,7 @@ public class PlatformBuildkit {
       toml.append("[registry.\"").append(mirror, 0, split).append("\"]\n  mirrors = [\"")
           .append(mirror, split + 1, mirror.length()).append("\"]\n");
     }
-    for (String registry : httpRegistries) {
+    for (String registry : httpRegistries.orElse(List.of())) {
       toml.append("[registry.\"").append(registry).append("\"]\n  http = true\n");
     }
     return toml.toString();

@@ -16,6 +16,21 @@
 # again.
 application: qits-containers
 
+# THE EDGE ADDRESS ITS CALLERS DIAL (qits-1409, feature qits-1406). Every service reaches its peers
+# at https://<label>.qits.<domain>, so a deployable nobody can reach through the edge is one its
+# callers (qits-workspaces, qits-projects, qits-orchestrator) cannot reach at all once the wire
+# aliases go. `/containers` is the one segment this service serves — its API at /containers/api,
+# the tunnel at /containers/tunnel, health and the API document at /containers/q — and `host:` names
+# the label explicitly although it equals the derived one, because a client's default address
+# (qits.containers.url) is spelled with it and must not move if the derivation ever does.
+#
+# OPENS NOTHING ANONYMOUS. The edge's service-vhost gate demands a valid token before it forwards,
+# and behind it every resource and the control socket keep @RolesAllowed("qits:system") and the
+# owner check; the tunnel's stream dial-back stays authenticated by its single-use nonce, and
+# /containers/q serves only health and the OpenAPI document, as on every other service.
+routes: /containers
+host: containers
+
 # TWO DATABASES, because this application opens two datasources with two Flyway lineages.
 # qits-deployments creates a login role and a database for each on the postgres of this tier before
 # the container starts and injects QITS_RESOURCE_<NAME>_URL / _USERNAME / _PASSWORD — the generic

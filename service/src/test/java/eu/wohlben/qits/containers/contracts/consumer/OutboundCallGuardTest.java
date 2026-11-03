@@ -105,7 +105,7 @@ class OutboundCallGuardTest {
       properties.load(in);
     }
     String server = properties.getProperty("quarkus.oidc.auth-server-url", "");
-    assertTrue(server.contains("qits-idp"), "the tenant reads qits-idp: " + server);
+    assertTrue(server.contains("//idp.qits."), "the tenant reads qits-idp at its edge host: " + server);
     Set<String> pacted =
         IdpPactTest.PACT.recorded().stream()
             .map(GoldenInteraction::operationId)

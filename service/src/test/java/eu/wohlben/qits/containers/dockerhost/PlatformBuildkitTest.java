@@ -11,6 +11,7 @@ import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
 import eu.wohlben.qits.containers.driver.spec.ContainersIdentifiers;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -41,9 +42,8 @@ public class PlatformBuildkitTest {
     buildkit.network = "qits-net";
     buildkit.registryMirrors =
         List.of(
-            "registry.dev.localhost:8080=dev-qits-artifacts:8080",
-            "mirror.dev.localhost:8080=qits-platform-mirror:8080");
-    buildkit.httpRegistries = List.of("dev-qits-artifacts:8080", "qits-platform-mirror:8080");
+            "quay.io=mirror.qits.example.test/quay", "docker.io=mirror.qits.example.test/hub");
+    buildkit.httpRegistries = Optional.of(List.of("plain-registry.example.test:5000"));
     buildkit.keepStorageBytes = 20_000_000_000L;
     buildkit.cpus = "4";
     buildkit.memory = "8g";
@@ -122,7 +122,7 @@ public class PlatformBuildkitTest {
     // The registry rewrites are as load-bearing as the pin — the failure that taught this was a
     // builder adopted with a toml naming an alias that resolves nowhere.
     String before = buildkit.configStamp(buildkit.buildkitdToml());
-    buildkit.registryMirrors = List.of("registry.dev.localhost:8080=somewhere-else:8080");
+    buildkit.registryMirrors = List.of("quay.io=somewhere-else.example.test/quay");
     assertFalse(before.equals(buildkit.configStamp(buildkit.buildkitdToml())));
   }
 
@@ -214,15 +214,22 @@ public class PlatformBuildkitTest {
           gckeepstorage = 20000000000
         [dns]
           nameservers = ["127.0.0.11"]
-        [registry."registry.dev.localhost:8080"]
-          mirrors = ["dev-qits-artifacts:8080"]
-        [registry."mirror.dev.localhost:8080"]
-          mirrors = ["qits-platform-mirror:8080"]
-        [registry."dev-qits-artifacts:8080"]
-          http = true
-        [registry."qits-platform-mirror:8080"]
+        [registry."quay.io"]
+          mirrors = ["mirror.qits.example.test/quay"]
+        [registry."docker.io"]
+          mirrors = ["mirror.qits.example.test/hub"]
+        [registry."plain-registry.example.test:5000"]
           http = true
         """,
         buildkit.buildkitdToml());
+  }
+
+  @Test
+  public void noPlainHttpRegistryIsGrantedByDefault() {
+    // The shipped file names none (qits-1409): the platform's registry and mirror are pulled at
+    // their edge hosts over TLS, and an absent key must render no `http = true` table at all.
+    buildkit.httpRegistries = Optional.empty();
+
+    assertFalse(buildkit.buildkitdToml().contains("http = true"));
   }
 }
