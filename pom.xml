@@ -70,8 +70,8 @@
              postgresql datasource is missing a line of that block. They move together: the rule
              names the driver as a string, so a driver that moved without the rule would pass a
              build it should fail. -->
-        <qits.db-core.version>2026.1002.70617</qits.db-core.version>
-        <qits.arch-rules.version>2026.1030.30851</qits.arch-rules.version>
+        <qits.db-core.version>2026.1106.507</qits.db-core.version>
+        <qits.arch-rules.version>2026.1106.507</qits.arch-rules.version>
 
         <!-- Machine identity, released out of the same libs/qits-integrations-quarkus train. It is
              the fourth platform jar this repo takes and the one AGENTS.md's "nothing else may
@@ -81,26 +81,26 @@
              answer invented here would be the interim static token the platform has a standing
              decision against. It brings no server and no transport: quarkus-oidc validates the
              bearer and this jar only reads the identity that validation leaves behind. -->
-        <qits.auth-core.version>2026.1105.105731</qits.auth-core.version>
+        <qits.auth-core.version>2026.1106.507</qits.auth-core.version>
 
         <!-- Service-to-service HTTP that says who is calling: QitsHttpClients.wrap turns a raw
              java.net.http.HttpClient into one that opens a CLIENT span and sends traceparent plus
              X-Qits-Caller; the server filter (jandex-discovered off this jar alone) records an
              inbound caller on the server span. Not released yet (qits-1198). -->
-        <qits.http-core.version>2026.1103.132907</qits.http-core.version>
+        <qits.http-core.version>2026.1106.507</qits.http-core.version>
 
         <!-- qits-telemetry-core (epic qits-428): the three OTLP/HTTP exporters as CDI beans whose
              header supplier carries the `qits` oidc client's current bearer, so spans, logs and
              metrics reach qits-observability at its edge host. Published by
              qits-integrations-quarkus, like qits-http-core above. -->
-        <qits.telemetry-core.version>2026.1103.201640</qits.telemetry-core.version>
+        <qits.telemetry-core.version>2026.1106.507</qits.telemetry-core.version>
 
         <!-- The platform event bus client. It is here from the scaffold rather than from the first
              event, because it brings the causation persistence trio (CausedRow, CausationStamp,
              @Uncaused) that every row this service writes has to decide about — see ArchRulesTest —
              and its own datasource, persistence unit and Flyway lineage. Adding it later would be a
              flag day: a second store appears in the deployment spec and in every suite at once. -->
-        <qits.eventstream.version>2026.1103.231226</qits.eventstream.version>
+        <qits.eventstream.version>2026.1106.12426</qits.eventstream.version>
 
         <!-- The user-story framework (test scope). This repository's userflow catalogue is six IT
              classes on one profile — api/TokenValidationBootstrapIT plus service/…/stories/** — so
@@ -110,14 +110,14 @@
              StoryNetworkFilter this repo used to carry. It has a version of its own rather than
              riding the three above, because it is released out of libs/qits-userflows and not out
              of the qits-integrations-quarkus reactor. -->
-        <qits.userflows.version>2026.1028.231715</qits.userflows.version>
+        <qits.userflows.version>2026.1106.205</qits.userflows.version>
 
         <!-- The recording service mocks the same IT boots against (the generic MockService plus
              idp.MockIdp), released out of libs/qits-integrations-quarkus like qits-db-core,
              qits-arch-rules and qits-auth-core above — so the same-string policy those three follow
              applies the day this repo consumes a newer reactor, and until then this names the
              release the mock idp arrived in. -->
-        <qits.service-mock.version>2026.1002.70617</qits.service-mock.version>
+        <qits.service-mock.version>2026.1106.507</qits.service-mock.version>
 
         <!-- The consumer pacts (qits-1149). qits-pact-consumer is the shared golden-master reader,
              released out of the same qits-integrations-quarkus train but pinned on its own: it is
@@ -126,7 +126,7 @@
              Both exact, never a range: a newer recording is a pact change. -->
         <!-- 2026.1018.135552 is the release that brought Via (qits-1163): client-contracts takes
              it in COMPILE scope, so a consumer of that jar inherits it at test scope. -->
-        <qits.pact-consumer.version>2026.1019.82625</qits.pact-consumer.version>
+        <qits.pact-consumer.version>2026.1106.507</qits.pact-consumer.version>
         <qits.idp-golden-masters.version>2026.1027.165632</qits.idp-golden-masters.version>
         <!-- This repository's OWN golden masters, as released (qits-1163). The platform packages
              golden-masters/ into that jar from the release step, so no module of this reactor
