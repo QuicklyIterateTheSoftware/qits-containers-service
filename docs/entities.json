@@ -59,18 +59,6 @@
           "site" : "ContainersResource.ensure(String, String, String, EnsureRequest)"
         },
         {
-          "type" : "eu.wohlben.qits.containers.control.BootSweep$Candidate",
-          "kind" : "mapper",
-          "via" : null,
-          "site" : "BootSweep.candidates(List)"
-        },
-        {
-          "type" : "eu.wohlben.qits.containers.control.ContainerObserver$Candidate",
-          "kind" : "assembler",
-          "via" : null,
-          "site" : "ContainerObserver.candidates()"
-        },
-        {
           "type" : "eu.wohlben.qits.containers.control.ContainerRegistry$Deleted",
           "kind" : "assembler",
           "via" : null,
@@ -105,24 +93,6 @@
           "kind" : "assembler",
           "via" : null,
           "site" : "CtContainer.lifecyclePolicy()"
-        },
-        {
-          "type" : "eu.wohlben.qits.containers.driver.spec.LifecyclePolicy$Type",
-          "kind" : "via",
-          "via" : "eu.wohlben.qits.containers.control.BootSweep$Candidate",
-          "site" : "Candidate.policy()"
-        },
-        {
-          "type" : "eu.wohlben.qits.containers.entity.DesiredState",
-          "kind" : "via",
-          "via" : "eu.wohlben.qits.containers.control.ContainerRegistry$Place",
-          "site" : "Place.desired()"
-        },
-        {
-          "type" : "eu.wohlben.qits.containers.entity.ObservedState",
-          "kind" : "via",
-          "via" : "eu.wohlben.qits.containers.control.ContainerObserver$Candidate",
-          "site" : "Candidate.observed()"
         }
       ],
       "operations" : [
@@ -190,27 +160,6 @@
           "kind" : "body"
         },
         {
-          "operationId" : "ensureContainer",
-          "method" : "PUT",
-          "path" : "/containers/{owner}/{workload}/{ref}",
-          "dto" : "eu.wohlben.qits.containers.driver.spec.LifecyclePolicy$Type",
-          "kind" : "body"
-        },
-        {
-          "operationId" : "ensureContainer",
-          "method" : "PUT",
-          "path" : "/containers/{owner}/{workload}/{ref}",
-          "dto" : "eu.wohlben.qits.containers.entity.DesiredState",
-          "kind" : "body"
-        },
-        {
-          "operationId" : "ensureContainer",
-          "method" : "PUT",
-          "path" : "/containers/{owner}/{workload}/{ref}",
-          "dto" : "eu.wohlben.qits.containers.entity.ObservedState",
-          "kind" : "body"
-        },
-        {
           "operationId" : "getContainer",
           "method" : "GET",
           "path" : "/containers/{owner}/{workload}/{ref}",
@@ -229,20 +178,6 @@
           "method" : "GET",
           "path" : "/containers/{owner}/{workload}/{ref}",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$StateDto",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "getContainer",
-          "method" : "GET",
-          "path" : "/containers/{owner}/{workload}/{ref}",
-          "dto" : "eu.wohlben.qits.containers.entity.DesiredState",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "getContainer",
-          "method" : "GET",
-          "path" : "/containers/{owner}/{workload}/{ref}",
-          "dto" : "eu.wohlben.qits.containers.entity.ObservedState",
           "kind" : "returns"
         },
         {
@@ -274,20 +209,6 @@
           "kind" : "returns"
         },
         {
-          "operationId" : "listOwnerContainers",
-          "method" : "GET",
-          "path" : "/containers/{owner}",
-          "dto" : "eu.wohlben.qits.containers.entity.DesiredState",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "listOwnerContainers",
-          "method" : "GET",
-          "path" : "/containers/{owner}",
-          "dto" : "eu.wohlben.qits.containers.entity.ObservedState",
-          "kind" : "returns"
-        },
-        {
           "operationId" : "listWorkloadContainers",
           "method" : "GET",
           "path" : "/containers/{owner}/{workload}",
@@ -309,20 +230,6 @@
           "kind" : "returns"
         },
         {
-          "operationId" : "listWorkloadContainers",
-          "method" : "GET",
-          "path" : "/containers/{owner}/{workload}",
-          "dto" : "eu.wohlben.qits.containers.entity.DesiredState",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "listWorkloadContainers",
-          "method" : "GET",
-          "path" : "/containers/{owner}/{workload}",
-          "dto" : "eu.wohlben.qits.containers.entity.ObservedState",
-          "kind" : "returns"
-        },
-        {
           "operationId" : "stopContainer",
           "method" : "POST",
           "path" : "/containers/{owner}/{workload}/{ref}/stop",
@@ -341,20 +248,6 @@
           "method" : "POST",
           "path" : "/containers/{owner}/{workload}/{ref}/stop",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$StateDto",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "stopContainer",
-          "method" : "POST",
-          "path" : "/containers/{owner}/{workload}/{ref}/stop",
-          "dto" : "eu.wohlben.qits.containers.entity.DesiredState",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "stopContainer",
-          "method" : "POST",
-          "path" : "/containers/{owner}/{workload}/{ref}/stop",
-          "dto" : "eu.wohlben.qits.containers.entity.ObservedState",
           "kind" : "returns"
         }
       ]
@@ -378,18 +271,6 @@
           "kind" : "assembler",
           "via" : null,
           "site" : "ContainerRegistry.deleteVolume(String, String)"
-        },
-        {
-          "type" : "eu.wohlben.qits.containers.control.VolumeReconcile$Claim",
-          "kind" : "assembler",
-          "via" : null,
-          "site" : "VolumeReconcile.claimsFor(List)"
-        },
-        {
-          "type" : "eu.wohlben.qits.containers.entity.VolumeState",
-          "kind" : "via",
-          "via" : "eu.wohlben.qits.containers.control.VolumeReconcile$Claim",
-          "site" : "Claim.desired()"
         }
       ],
       "operations" : [
@@ -401,29 +282,8 @@
           "kind" : "returns"
         },
         {
-          "operationId" : "deleteVolume",
-          "method" : "DELETE",
-          "path" : "/volumes/{owner}/{name}",
-          "dto" : "eu.wohlben.qits.containers.entity.VolumeState",
-          "kind" : "returns"
-        },
-        {
           "operationId" : "ensureVolume",
           "method" : "PUT",
-          "path" : "/volumes/{owner}/{name}",
-          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$VolumeEnvelope",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "ensureVolume",
-          "method" : "PUT",
-          "path" : "/volumes/{owner}/{name}",
-          "dto" : "eu.wohlben.qits.containers.entity.VolumeState",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "getVolume",
-          "method" : "GET",
           "path" : "/volumes/{owner}/{name}",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$VolumeEnvelope",
           "kind" : "returns"
@@ -432,7 +292,7 @@
           "operationId" : "getVolume",
           "method" : "GET",
           "path" : "/volumes/{owner}/{name}",
-          "dto" : "eu.wohlben.qits.containers.entity.VolumeState",
+          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$VolumeEnvelope",
           "kind" : "returns"
         }
       ]
