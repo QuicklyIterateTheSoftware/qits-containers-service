@@ -344,6 +344,12 @@ class GoldenMasterRecordingTest {
 
   @Inject ProviderStates states;
 
+  /**
+   * The committed index's frozen params, slug → param → frozen value: what pins a param's frozen id
+   * numbers ({@link Freezer#seed(Map, Map)}), read once before recording.
+   */
+  private Map<String, Map<String, String>> committedParams = Map.of();
+
   @Test
   void goldenMastersMatchTheProvider() throws IOException {
     Path dir = GoldenFiles.repositoryRoot().resolve("golden-masters");
@@ -355,6 +361,7 @@ class GoldenMasterRecordingTest {
     Map<String, ObjectNode> indexStates = new TreeMap<>();
     Map<String, Map<String, ObjectNode>> indexOperations = new TreeMap<>();
 
+    committedParams = committedParams(dir.resolve("index.json"));
     for (Interaction interaction : INTERACTIONS) {
       // A gated answer is checked by the gated test; here only its index entry is built.
       Recorded recorded = gated(interaction) ? recordGated(interaction) : record(interaction);
@@ -467,7 +474,11 @@ class GoldenMasterRecordingTest {
   private Recorded recordGated(Interaction interaction) {
     ProviderStates.Setup setup = states.setUp(interaction.state());
     try {
-      return frozen(JsonNodeFactory.instance.nullNode(), interaction, setup);
+      return frozen(
+          JsonNodeFactory.instance.nullNode(),
+          interaction,
+          setup,
+          committedParams.getOrDefault(ProviderStates.slug(interaction.state()), Map.of()));
     } finally {
       states.cleanUp();
     }
@@ -475,7 +486,10 @@ class GoldenMasterRecordingTest {
 
   /** Calls the interaction against the running application, in a state already set up. */
   static Recorded call(
-      Interaction interaction, ProviderStates.Setup setup, Map<String, String> headers)
+      Interaction interaction,
+      ProviderStates.Setup setup,
+      Map<String, String> headers,
+      Map<String, String> committedParams)
       throws IOException {
     Map<String, String> params = setup.params();
 
@@ -502,22 +516,34 @@ class GoldenMasterRecordingTest {
     }
     // A 204 or a 401 has no body; it is recorded as JSON null, so every operation has a file.
     JsonNode body = raw.isBlank() ? JsonNodeFactory.instance.nullNode() : JSON.readTree(raw);
-    return frozen(body, interaction, setup);
+    return frozen(body, interaction, setup, committedParams);
   }
 
   private Recorded recordIn(Interaction interaction, ProviderStates.Setup setup) throws IOException {
-    return call(interaction, setup, Map.of());
+    return call(
+        interaction,
+        setup,
+        Map.of(),
+        committedParams.getOrDefault(ProviderStates.slug(interaction.state()), Map.of()));
   }
 
-  /** The answer reduced and frozen, with the state's params frozen the same way. */
-  static Recorded frozen(JsonNode body, Interaction interaction, ProviderStates.Setup setup) {
+  /**
+   * The answer reduced and frozen, with the state's params frozen the same way, sticky to the
+   * committed index.
+   */
+  static Recorded frozen(
+      JsonNode body,
+      Interaction interaction,
+      ProviderStates.Setup setup,
+      Map<String, String> committedParams) {
     Map<String, String> params = setup.params();
     if (body.isObject()) {
       interaction.dropped().forEach(((ObjectNode) body)::remove);
     }
     body = recordable(body, interaction, params.values(), setup.uniqueTokens());
 
-    Freezer freezer = new Freezer().seed(params.values()).uniqueTokens(setup.uniqueTokens());
+    Freezer freezer =
+        new Freezer().seed(params, committedParams).uniqueTokens(setup.uniqueTokens());
     ObjectNode frozenParams = JsonNodeFactory.instance.objectNode();
     params.forEach((k, v) -> frozenParams.put(k, freezer.freezeParam(v)));
     return new Recorded(freezer.freeze(body), frozenParams, freezer);
@@ -606,6 +632,23 @@ class GoldenMasterRecordingTest {
   private static ArrayNode strings(List<String> values) {
     ArrayNode out = JsonNodeFactory.instance.arrayNode();
     values.forEach(out::add);
+    return out;
+  }
+
+  /**
+   * slug → frozen params of every state in the committed index ({@code states[].slug}, {@code
+   * states[].params}); empty when there is no index yet.
+   */
+  static Map<String, Map<String, String>> committedParams(Path index) throws IOException {
+    if (!Files.isRegularFile(index)) {
+      return Map.of();
+    }
+    Map<String, Map<String, String>> out = new TreeMap<>();
+    for (JsonNode state : JSON.readTree(index.toFile()).path("states")) {
+      Map<String, String> params = new TreeMap<>();
+      state.path("params").fields().forEachRemaining(p -> params.put(p.getKey(), p.getValue().asText()));
+      out.put(state.path("slug").asText(), params);
+    }
     return out;
   }
 

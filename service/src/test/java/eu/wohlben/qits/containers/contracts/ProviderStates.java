@@ -117,7 +117,15 @@ public class ProviderStates {
   /** A bootstrap builder container, pruned beside the platform's own buildkitd. */
   static final String BOOTSTRAP_BUILDER = "buildx_buildkit_qits-bootstrap-builder-v40";
 
-  /** What a state hands back: its parameters, keys sorted, and its unique tokens (none here). */
+  /**
+   * What a state hands back: its parameters, keys sorted, and its unique tokens (none here).
+   *
+   * @param params the state's parameters, keys sorted — what a pact {@code @State} method returns.
+   *     A UUID's frozen number in a param — the whole value or embedded in it — is sticky to the
+   *     committed {@code golden-masters/index.json} ({@link Freezer#seed(Map, Map)}): adding or
+   *     removing a param never renumbers the others
+   * @param uniqueTokens random tokens the state had to put into names to keep them unique
+   */
   public record Setup(Map<String, String> params, List<String> uniqueTokens) {}
 
   @Inject Instance<FakeContainersDriver> driver;
