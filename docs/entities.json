@@ -111,13 +111,6 @@
           "kind" : "returns"
         },
         {
-          "operationId" : "destroyWorkloadContainers",
-          "method" : "DELETE",
-          "path" : "/containers/{owner}/{workload}",
-          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$DestroyedDto",
-          "kind" : "returns"
-        },
-        {
           "operationId" : "ensureContainer",
           "method" : "PUT",
           "path" : "/containers/{owner}/{workload}/{ref}",
@@ -125,59 +118,10 @@
           "kind" : "body"
         },
         {
-          "operationId" : "ensureContainer",
-          "method" : "PUT",
-          "path" : "/containers/{owner}/{workload}/{ref}",
-          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$EndpointDto",
-          "kind" : "body"
-        },
-        {
-          "operationId" : "ensureContainer",
-          "method" : "PUT",
-          "path" : "/containers/{owner}/{workload}/{ref}",
-          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ErrorBody",
-          "kind" : "body"
-        },
-        {
-          "operationId" : "ensureContainer",
-          "method" : "PUT",
-          "path" : "/containers/{owner}/{workload}/{ref}",
-          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$StateDto",
-          "kind" : "body"
-        },
-        {
-          "operationId" : "ensureContainer",
-          "method" : "PUT",
-          "path" : "/containers/{owner}/{workload}/{ref}",
-          "dto" : "eu.wohlben.qits.containers.control.ContainerRegistry$Ensured",
-          "kind" : "body"
-        },
-        {
-          "operationId" : "ensureContainer",
-          "method" : "PUT",
-          "path" : "/containers/{owner}/{workload}/{ref}",
-          "dto" : "eu.wohlben.qits.containers.driver.spec.LifecyclePolicy",
-          "kind" : "body"
-        },
-        {
           "operationId" : "getContainer",
           "method" : "GET",
           "path" : "/containers/{owner}/{workload}/{ref}",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ContainerEnvelope",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "getContainer",
-          "method" : "GET",
-          "path" : "/containers/{owner}/{workload}/{ref}",
-          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$EndpointDto",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "getContainer",
-          "method" : "GET",
-          "path" : "/containers/{owner}/{workload}/{ref}",
-          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$StateDto",
           "kind" : "returns"
         },
         {
@@ -195,20 +139,6 @@
           "kind" : "returns"
         },
         {
-          "operationId" : "listOwnerContainers",
-          "method" : "GET",
-          "path" : "/containers/{owner}",
-          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$EndpointDto",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "listOwnerContainers",
-          "method" : "GET",
-          "path" : "/containers/{owner}",
-          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$StateDto",
-          "kind" : "returns"
-        },
-        {
           "operationId" : "listWorkloadContainers",
           "method" : "GET",
           "path" : "/containers/{owner}/{workload}",
@@ -216,38 +146,10 @@
           "kind" : "returns"
         },
         {
-          "operationId" : "listWorkloadContainers",
-          "method" : "GET",
-          "path" : "/containers/{owner}/{workload}",
-          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$EndpointDto",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "listWorkloadContainers",
-          "method" : "GET",
-          "path" : "/containers/{owner}/{workload}",
-          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$StateDto",
-          "kind" : "returns"
-        },
-        {
           "operationId" : "stopContainer",
           "method" : "POST",
           "path" : "/containers/{owner}/{workload}/{ref}/stop",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ContainerEnvelope",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "stopContainer",
-          "method" : "POST",
-          "path" : "/containers/{owner}/{workload}/{ref}/stop",
-          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$EndpointDto",
-          "kind" : "returns"
-        },
-        {
-          "operationId" : "stopContainer",
-          "method" : "POST",
-          "path" : "/containers/{owner}/{workload}/{ref}/stop",
-          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$StateDto",
           "kind" : "returns"
         }
       ]
