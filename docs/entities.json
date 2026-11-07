@@ -1,0 +1,203 @@
+{
+  "formatVersion" : 1,
+  "application" : "qits-containers",
+  "entities" : [
+    {
+      "entity" : "eu.wohlben.qits.containers.entity.CtContainer",
+      "table" : "ct_container",
+      "marking" : "domain",
+      "reason" : null,
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.containers.api.ContainersWire$ContainerEnvelope",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.containers.driver.spec.LifecyclePolicy",
+          "site" : "ContainersResource.ensure(String, String, String, EnsureRequest)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.api.ContainersWire$DeleteResponse",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.containers.control.ContainerRegistry$Deleted",
+          "site" : "ContainersResource.delete(String, String, String, boolean, boolean)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.api.ContainersWire$DestroyAllResponse",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.containers.control.ContainerRegistry$Destroyed",
+          "site" : "ContainersResource.destroyAll(String, String, String)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.api.ContainersWire$DestroyedDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.containers.control.ContainerRegistry$Destroyed",
+          "site" : "ContainersResource.destroyAll(String, String, String)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.api.ContainersWire$EndpointDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.containers.control.ContainerRegistry$Place",
+          "site" : "ContainersResource.envelope(Place)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.api.ContainersWire$ErrorBody",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.containers.driver.spec.LifecyclePolicy",
+          "site" : "ContainersResource.ensure(String, String, String, EnsureRequest)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.api.ContainersWire$LogsResponse",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.containers.control.ContainerRegistry$Place",
+          "site" : "ContainersResource.logs(String, String, String, int)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.api.ContainersWire$StateDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.containers.driver.spec.LifecyclePolicy",
+          "site" : "ContainersResource.ensure(String, String, String, EnsureRequest)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.control.ContainerRegistry$Deleted",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "ContainerRegistry.delete(String, String, String, boolean, boolean)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.control.ContainerRegistry$Destroyed",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "ContainerRegistry.destroyAll(String, String, Instant)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.control.ContainerRegistry$Ensured",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.containers.control.ContainerRegistry$Plan",
+          "site" : "ContainerRegistry.ensure(String, String, String, ContainerSpec, LifecyclePolicy, boolean)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.control.ContainerRegistry$Place",
+          "kind" : "mapper",
+          "via" : null,
+          "site" : "ContainerRegistry.placeOf(CtContainer)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.control.ContainerRegistry$Plan",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "ContainerRegistry.upsert(String, String, String, ContainerSpec, LifecyclePolicy, boolean)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.driver.spec.LifecyclePolicy",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "CtContainer.lifecyclePolicy()"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "deleteContainer",
+          "method" : "DELETE",
+          "path" : "/containers/{owner}/{workload}/{ref}",
+          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$DeleteResponse",
+          "kind" : "returns"
+        },
+        {
+          "operationId" : "destroyWorkloadContainers",
+          "method" : "DELETE",
+          "path" : "/containers/{owner}/{workload}",
+          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$DestroyAllResponse",
+          "kind" : "returns"
+        },
+        {
+          "operationId" : "ensureContainer",
+          "method" : "PUT",
+          "path" : "/containers/{owner}/{workload}/{ref}",
+          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ContainerEnvelope",
+          "kind" : "body"
+        },
+        {
+          "operationId" : "getContainer",
+          "method" : "GET",
+          "path" : "/containers/{owner}/{workload}/{ref}",
+          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ContainerEnvelope",
+          "kind" : "returns"
+        },
+        {
+          "operationId" : "getContainerLogs",
+          "method" : "GET",
+          "path" : "/containers/{owner}/{workload}/{ref}/logs",
+          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$LogsResponse",
+          "kind" : "returns"
+        },
+        {
+          "operationId" : "listOwnerContainers",
+          "method" : "GET",
+          "path" : "/containers/{owner}",
+          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ContainerEnvelope",
+          "kind" : "returns"
+        },
+        {
+          "operationId" : "listWorkloadContainers",
+          "method" : "GET",
+          "path" : "/containers/{owner}/{workload}",
+          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ContainerEnvelope",
+          "kind" : "returns"
+        },
+        {
+          "operationId" : "stopContainer",
+          "method" : "POST",
+          "path" : "/containers/{owner}/{workload}/{ref}/stop",
+          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ContainerEnvelope",
+          "kind" : "returns"
+        }
+      ]
+    },
+    {
+      "entity" : "eu.wohlben.qits.containers.entity.CtVolume",
+      "table" : "ct_volume",
+      "marking" : "domain",
+      "reason" : null,
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.containers.api.ContainersWire$VolumeEnvelope",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.containers.control.ContainerRegistry$VolumeOutcome",
+          "site" : "VolumesResource.delete(String, String)"
+        },
+        {
+          "type" : "eu.wohlben.qits.containers.control.ContainerRegistry$VolumeOutcome",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "ContainerRegistry.deleteVolume(String, String)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "deleteVolume",
+          "method" : "DELETE",
+          "path" : "/volumes/{owner}/{name}",
+          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$VolumeEnvelope",
+          "kind" : "returns"
+        },
+        {
+          "operationId" : "ensureVolume",
+          "method" : "PUT",
+          "path" : "/volumes/{owner}/{name}",
+          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$VolumeEnvelope",
+          "kind" : "returns"
+        },
+        {
+          "operationId" : "getVolume",
+          "method" : "GET",
+          "path" : "/volumes/{owner}/{name}",
+          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$VolumeEnvelope",
+          "kind" : "returns"
+        }
+      ]
+    }
+  ]
+}
