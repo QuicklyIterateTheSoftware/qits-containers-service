@@ -195,7 +195,8 @@ exempt, including the ones that "cannot" block.
   stored spec or the hash would recreate every flagged container whenever the edge's VIP moved.
   `SpecFingerprint` elides the driver's `dns`/`extraNetworks` while they are empty, which is what kept
   every stored `spec_hash` byte-identical across driver 2026.1110.32907; a component the driver
-  adds next goes into that same mix-in for the same reason.
+  adds next joins `LATE_COMPONENTS` there for the same reason. The elision edits the canonical JSON
+  tree rather than using a Jackson mix-in, so it needs no reflection registration in the native binary.
 - **Schema changes append to `core/src/main/resources/db/containers/migration/`.** Never edit an
   applied migration. V1's header records the two decisions it makes — no check constraints on enum
   columns, and the spec's environment is never persisted because it carries secrets. V2 is that rule
