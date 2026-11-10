@@ -73,7 +73,7 @@
         {
           "type" : "eu.wohlben.qits.containers.control.ContainerRegistry$Ensured",
           "kind" : "via",
-          "via" : "eu.wohlben.qits.containers.control.ContainerRegistry$Plan",
+          "via" : "eu.wohlben.qits.containers.driver.spec.LifecyclePolicy",
           "site" : "ContainerRegistry.ensure(String, String, String, ContainerSpec, LifecyclePolicy, boolean)"
         },
         {
@@ -81,12 +81,6 @@
           "kind" : "mapper",
           "via" : null,
           "site" : "ContainerRegistry.placeOf(CtContainer)"
-        },
-        {
-          "type" : "eu.wohlben.qits.containers.control.ContainerRegistry$Plan",
-          "kind" : "assembler",
-          "via" : null,
-          "site" : "ContainerRegistry.upsert(String, String, String, ContainerSpec, LifecyclePolicy, boolean)"
         },
         {
           "type" : "eu.wohlben.qits.containers.driver.spec.LifecyclePolicy",
