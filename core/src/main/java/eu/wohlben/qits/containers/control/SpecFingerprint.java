@@ -1,14 +1,17 @@
 package eu.wohlben.qits.containers.control;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -45,6 +48,26 @@ import java.util.Map;
  * 2026-08-11. So a record component added to {@link ContainerSpec}, and any nested record or enum it
  * brings with it, is a change to that list too; {@code SpecReflectionCoverageTest} fails the build
  * when the two drift apart.
+ *
+ * <p><b>A component added to {@link ContainerSpec} after rows were stored is elided while it is
+ * empty</b>, and that is what keeps every stored {@code spec_hash} valid across the bump that brings
+ * it. Sorting alphabetically stops a new component from reordering the others, but it still adds a
+ * key — {@code "dns":[]} — to the canonical form of every spec, and a hash over a different string is
+ * a different hash: every row on the estate would read as changed and every {@code ifChanged} ensure
+ * would recreate its container for a spec nobody touched. So {@code dns} and {@code extraNetworks}
+ * (qits-containers-driver 2026.1110.32907, qits-1991) are written only when they hold something
+ * ({@link LateComponents}); an empty one is absent from both forms, which is exactly the string
+ * every row stored before them was hashed over, and an absent one reads back as empty because the
+ * canonical constructor normalizes a null list. A spec that does carry one is a different workload
+ * and hashes as one. {@code SpecFingerprintGoldenTest} pins both halves. The next component added
+ * to the record joins {@link LateComponents} for the same reason, unless its arrival is meant to
+ * recreate everything.
+ *
+ * <p><b>Neither of the two is ever set by a caller today</b> — the wire has no field for them. They
+ * are filled in only by the private-edge resolution in the service module, on the spec handed to
+ * {@code docker run}, which is never the spec this class sees: the row stores and hashes what was
+ * asked for, not what the host made of it, so an edge VIP that moves or a resolver list that changes
+ * does not read as a spec change either.
  */
 final class SpecFingerprint {
 
@@ -53,7 +76,27 @@ final class SpecFingerprint {
           .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
           .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
           .disable(SerializationFeature.INDENT_OUTPUT)
+          .addMixIn(ContainerSpec.class, LateComponents.class)
           .build();
+
+  /**
+   * The {@link ContainerSpec} components that arrived after rows were already stored, each written
+   * only when non-empty — see the class javadoc. A mix-in rather than an annotation on the record,
+   * because the record lives in qits-containers-driver and knows nothing of Jackson.
+   *
+   * <p>Registered for reflection where it stands, for the reason every type this mapper touches is:
+   * a native binary that could not read these two annotations would write {@code "dns":[]} again,
+   * and every hash it computed would differ from the one the JVM build stored.
+   */
+  @RegisterForReflection
+  abstract static class LateComponents {
+
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    abstract List<String> dns();
+
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    abstract List<String> extraNetworks();
+  }
 
   private SpecFingerprint() {}
 
@@ -114,6 +157,8 @@ final class SpecFingerprint {
         spec.pullPolicy(),
         spec.explicitName(),
         spec.user(),
-        spec.init());
+        spec.init(),
+        spec.dns(),
+        spec.extraNetworks());
   }
 }

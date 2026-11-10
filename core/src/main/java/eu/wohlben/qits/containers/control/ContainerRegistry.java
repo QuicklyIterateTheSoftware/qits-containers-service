@@ -271,6 +271,51 @@ public class ContainerRegistry {
       ContainerSpec spec,
       LifecyclePolicy policy,
       boolean recreateIfChanged) {
+    return ensure(owner, workload, ownerRef, spec, policy, recreateIfChanged, AtRun.AS_ASKED);
+  }
+
+  /**
+   * What the host adds to a spec at the moment it is run, and only then (qits-1991).
+   *
+   * <p>A spec the row stores is what the owner asked for; a spec {@code docker run} is handed may
+   * carry a little more that only the host can know — today, the private edge's network and its
+   * resolver, which {@code dockerhost/PrivateEdgeResolver} reads off the daemon for a spec flagged
+   * {@code privateEdge} on the wire. It is applied to the spec of a {@code START} or a {@code
+   * REPLACE} immediately before the driver's {@code run}, after the row was committed with the
+   * unresolved spec and its hash, and its result is never written anywhere. That ordering is the
+   * point: the hash is of the ask, so an edge VIP that moved, a resolver list the host changed or a
+   * flag a caller started sending does not read as a spec change and recreates nothing — a running
+   * container picks the resolution up at its next run, and a {@code RESTART} keeps what docker
+   * recorded against the container at the run that made it.
+   *
+   * <p>An interface in {@code control} with its implementation in the service module, because this
+   * module never touches docker directly and resolving the edge is several docker calls. It must not
+   * throw: the resolution is an improvement on a run, never a reason to refuse one, so a failure
+   * inside it answers the spec it was given — {@link #ensure} enforces that as well, by running the
+   * spec as asked when it throws anyway.
+   */
+  @FunctionalInterface
+  public interface AtRun {
+
+    /** No resolution: the spec is run exactly as it was asked for, which is every ensure but one. */
+    AtRun AS_ASKED = (spec, containerName) -> spec;
+
+    /** The spec {@code docker run} is handed for {@code containerName}. */
+    ContainerSpec resolve(ContainerSpec spec, String containerName);
+  }
+
+  /**
+   * {@link #ensure(String, String, String, ContainerSpec, LifecyclePolicy, boolean)}, with the
+   * spec handed to {@code docker run} passed through {@code atRun} first — see {@link AtRun}.
+   */
+  public Ensured ensure(
+      String owner,
+      String workload,
+      String ownerRef,
+      ContainerSpec spec,
+      LifecyclePolicy policy,
+      boolean recreateIfChanged,
+      AtRun atRun) {
     ContainersIdentifiers.requireOwner(owner);
     ContainersIdentifiers.requireWorkload(workload);
     ContainersIdentifiers.requireRef(ownerRef);
@@ -327,7 +372,8 @@ public class ContainerRegistry {
 
     Map<String, String> labels =
         ContainerLabels.forContainer(owner, workload, ownerRef, plan.rowId().toString(), instanceId);
-    ContainersDriver.Started started = driver.run(spec, name, labels, policy, ContainersTimeouts.RUN);
+    ContainersDriver.Started started =
+        driver.run(atRun(atRun, spec, name), name, labels, policy, ContainersTimeouts.RUN);
 
     if (!started.started()) {
       Optional<ContainersDriver.Observed> existing =
@@ -365,6 +411,20 @@ public class ContainerRegistry {
     settle(plan.rowId(), observed, null);
     return new Ensured(
         plan.rowId(), name, DesiredState.RUNNING, observed, plan.specHash(), plan.created(), null);
+  }
+
+  /**
+   * The spec {@code atRun} makes of {@code spec}, or {@code spec} itself when it throws: a
+   * resolution that failed is a container run as it was asked for, never a container not run.
+   */
+  private static ContainerSpec atRun(AtRun atRun, ContainerSpec spec, String name) {
+    try {
+      ContainerSpec resolved = atRun.resolve(spec, name);
+      return resolved == null ? spec : resolved;
+    } catch (RuntimeException e) {
+      LOG.warnf(e, "Could not resolve what the host adds to %s; running it as asked", name);
+      return spec;
+    }
   }
 
   /**

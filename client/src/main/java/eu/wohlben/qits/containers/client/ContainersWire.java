@@ -59,7 +59,15 @@ public final class ContainersWire {
     NEVER
   }
 
-  /** Everything one container is started with. Sixteen fields, so build it rather than call it. */
+  /**
+   * Everything one container is started with. Seventeen fields, so build it rather than call it.
+   *
+   * <p>{@code privateEdge} is the one that is not a property of the container but an ask of the
+   * service (qits-1991): true joins the container to the {@code qits-private} overlay and puts the
+   * private edge's VIP first among its resolvers, ahead of the host's own. The service resolves
+   * both off its docker daemon at each run, because only it can — see {@link #withPrivateEdge}.
+   * Null and false are the same statement.
+   */
   public record Spec(
       String image,
       List<String> entrypoint,
@@ -76,13 +84,57 @@ public final class ContainersWire {
       PullPolicy pullPolicy,
       String explicitName,
       String user,
-      Boolean init) {
+      Boolean init,
+      Boolean privateEdge) {
+
+    /**
+     * The sixteen fields every caller built before {@code privateEdge} existed, kept so a
+     * positional call written then still compiles. It asks for no private edge, which is what such
+     * a caller meant — and a null is left out of the body altogether ({@link ContainersJson}), so
+     * the request it sends is byte for byte the one it sent before.
+     */
+    public Spec(
+        String image,
+        List<String> entrypoint,
+        List<String> args,
+        Map<String, String> env,
+        Map<String, String> extraLabels,
+        String network,
+        List<String> aliases,
+        List<String> addHosts,
+        List<VolumeMount> volumeMounts,
+        List<SharedMount> sharedMounts,
+        boolean hostDockerSocket,
+        Security security,
+        PullPolicy pullPolicy,
+        String explicitName,
+        String user,
+        Boolean init) {
+      this(
+          image,
+          entrypoint,
+          args,
+          env,
+          extraLabels,
+          network,
+          aliases,
+          addHosts,
+          volumeMounts,
+          sharedMounts,
+          hostDockerSocket,
+          security,
+          pullPolicy,
+          explicitName,
+          user,
+          init,
+          null);
+    }
 
     /** The two fields the service refuses a spec without, and nothing else. */
     public static Spec of(String image, String network) {
       return new Spec(
           image, null, null, null, null, network, null, null, null, null, false, null, null, null,
-          null, null);
+          null, null, null);
     }
 
     /**
@@ -110,7 +162,8 @@ public final class ContainersWire {
           pullPolicy,
           explicitName,
           value,
-          init);
+          init,
+          privateEdge);
     }
 
     /**
@@ -139,6 +192,39 @@ public final class ContainersWire {
           pullPolicy,
           explicitName,
           user,
+          value,
+          privateEdge);
+    }
+
+    /**
+     * The same spec, on the private edge (qits-1991): joined to the {@code qits-private} overlay,
+     * resolving through the private edge's VIP first and the host's own resolvers after it. Null and
+     * false are the same statement, and both are what a spec that says nothing means.
+     *
+     * <p>The service resolves the network and the addresses off its own docker daemon each time it
+     * runs the container, and never stores them: a spec with the flag and its twin without it carry
+     * the same {@code specHash}, so turning it on recreates nothing — the container takes the edge at
+     * its next run. A host with no {@code qits-private} network gets neither the join nor the
+     * resolver, and the container runs as if the flag were off.
+     */
+    public Spec withPrivateEdge(boolean value) {
+      return new Spec(
+          image,
+          entrypoint,
+          args,
+          env,
+          extraLabels,
+          network,
+          aliases,
+          addHosts,
+          volumeMounts,
+          sharedMounts,
+          hostDockerSocket,
+          security,
+          pullPolicy,
+          explicitName,
+          user,
+          init,
           value);
     }
   }

@@ -13,6 +13,7 @@ import eu.wohlben.qits.containers.api.ContainersWire.Recreate;
 import eu.wohlben.qits.containers.api.ContainersWire.StateDto;
 import eu.wohlben.qits.containers.control.ContainerRegistry;
 import eu.wohlben.qits.containers.dockerhost.PlatformBuildkit;
+import eu.wohlben.qits.containers.dockerhost.PrivateEdgeResolver;
 import eu.wohlben.qits.containers.driver.ContainersDriver;
 import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
 import eu.wohlben.qits.containers.driver.spec.ContainersIdentifiers;
@@ -86,6 +87,8 @@ public class ContainersResource {
 
   @Inject PlatformBuildkit buildkit;
 
+  @Inject PrivateEdgeResolver privateEdge;
+
   // --- the one write that starts something -------------------------------------------------------
 
   /**
@@ -123,9 +126,16 @@ public class ContainersResource {
     ContainerSpec spec = buildkit.handOut(workload, ContainersWire.toSpec(request.spec()));
     LifecyclePolicy policy = ContainersWire.toPolicy(request.policy());
 
+    // The private edge is resolved at the run and never before it: the row stores and hashes the
+    // spec as asked, so the flag and whatever the host makes of it recreate nothing (qits-1991).
+    ContainerRegistry.AtRun atRun =
+        ContainersWire.privateEdge(request.spec())
+            ? privateEdge::resolve
+            : ContainerRegistry.AtRun.AS_ASKED;
+
     ContainerRegistry.Ensured ensured =
         registry.ensure(
-            owner, workload, ref, spec, policy, request.recreate() == Recreate.ifChanged);
+            owner, workload, ref, spec, policy, request.recreate() == Recreate.ifChanged, atRun);
 
     if (ensured.observed() == ObservedState.MISSING && imageMissing(ensured.detail())) {
       return Response.status(Response.Status.CONFLICT)

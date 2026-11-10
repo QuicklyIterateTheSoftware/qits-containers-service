@@ -166,6 +166,9 @@ class ContainersClientRequestTest {
     // init is nullable for this reason: the field is omitted entirely, so the body a caller that
     // never heard of tini sends is byte for byte the body it sent before the field existed.
     assertTrue(!body.contains("\"init\""), body);
+    // privateEdge (qits-1991) the same way: a caller that never asks for the edge sends the body it
+    // always sent.
+    assertTrue(!body.contains("\"privateEdge\""), body);
   }
 
   @Test
@@ -183,6 +186,29 @@ class ContainersClientRequestTest {
     assertTrue(body.contains("\"init\":true"), body);
     assertTrue(body.contains("\"image\":\"alpine:3\""), body);
     assertTrue(body.contains("\"network\":\"qits-net\""), body);
+  }
+
+  @Test
+  void anAskForThePrivateEdgeIsOnTheBodyAndNothingElseMoves() {
+    Spec plain = Spec.of("alpine:3", "qits-net").withInit(true).runAs("1000");
+    Spec flagged = plain.withPrivateEdge(true);
+    client.ensure(
+        "qits-ci", "step", "run-1", new EnsureRequest(flagged, Policy.idleStop(3600L), Recreate.ifChanged));
+    String body = stub.last().body();
+
+    assertTrue(body.contains("\"privateEdge\":true"), body);
+    assertTrue(body.contains("\"init\":true"), body);
+    assertTrue(body.contains("\"user\":\"1000\""), body);
+    // The two withers carry the flag through each other, and the old sixteen-field constructor
+    // still compiles and still means "no edge".
+    assertEquals(Boolean.TRUE, flagged.withInit(false).runAs("root").privateEdge());
+    assertEquals(Boolean.FALSE, flagged.withPrivateEdge(false).privateEdge());
+    assertEquals(
+        null,
+        new Spec(
+                "alpine:3", null, null, null, null, "qits-net", null, null, null, null, false, null,
+                null, null, null, null)
+            .privateEdge());
   }
 
   // --- the headers -------------------------------------------------------------------------------------

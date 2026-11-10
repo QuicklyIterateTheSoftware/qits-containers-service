@@ -1,6 +1,8 @@
 package eu.wohlben.qits.containers.control;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
 import eu.wohlben.qits.containers.driver.spec.ContainerSpec.PullPolicy;
@@ -26,7 +28,7 @@ import org.junit.jupiter.api.Test;
  * computed once, on the code as it stood before the spec types moved out of this repository
  * (qits-789, epic qits-623), and that move is required to keep them byte-identical.
  *
- * <p>Five shapes together exercise all sixteen {@link ContainerSpec} components, each populated in
+ * <p>Five shapes together exercise the sixteen {@link ContainerSpec} components, each populated in
  * one shape and empty or defaulted in another: the minimal spec (every list and map empty, every
  * string defaulted, {@link SecurityPosture#none()} with all-null fields); the workspace shape
  * (labels, env, add-host, own and shared mounts, a full sandbox, explicit name, user and init); the
@@ -35,6 +37,14 @@ import org.junit.jupiter.api.Test;
  * a null cpus; and a buildkitd-like maximal shape (entrypoint, args, aliases, cap-drop-all,
  * no-new-privileges, {@code ALWAYS}, a negative OOM score). The shapes with env pin that env is
  * hashed, and their persisted JSON pins that it is not stored.
+ *
+ * <p>The two components added after these literals were computed — {@code dns} and {@code
+ * extraNetworks}, qits-containers-driver 2026.1110.32907 — are empty in all five shapes, and the
+ * literals stand unchanged: {@code SpecFingerprint} elides them while empty. The test beside the
+ * five pins both halves of that. What stands for qits-1991's {@code privateEdge} flag here is
+ * nothing at all: it is not a spec component, so it cannot reach a fingerprint, and {@code
+ * service}'s {@code PrivateEdgeEnsureTest} pins that a flagged ensure and its unflagged twin answer
+ * the same {@code specHash}.
  */
 class SpecFingerprintGoldenTest {
 
@@ -132,6 +142,46 @@ class SpecFingerprintGoldenTest {
     assertGolden(buildkitd(), BUILDKITD_HASH, BUILDKITD_JSON);
   }
 
+  /**
+   * The two components qits-containers-driver 2026.1110.32907 added (qits-1991) are elided while
+   * empty — which is what keeps every literal above byte-identical across that bump — and written
+   * once they hold something, so a spec that does carry them is a different workload.
+   */
+  @Test
+  void theLateComponentsAreAbsentWhileEmptyAndPresentOnceSet() {
+    ContainerSpec viaBuilder = workspaceBuilder().build();
+    ContainerSpec viaCanonical =
+        new ContainerSpec(
+            viaBuilder.image(),
+            viaBuilder.entrypoint(),
+            viaBuilder.args(),
+            viaBuilder.env(),
+            viaBuilder.extraLabels(),
+            viaBuilder.network(),
+            viaBuilder.aliases(),
+            viaBuilder.addHosts(),
+            viaBuilder.volumeMounts(),
+            viaBuilder.sharedMounts(),
+            viaBuilder.hostDockerSocket(),
+            viaBuilder.security(),
+            viaBuilder.pullPolicy(),
+            viaBuilder.explicitName(),
+            viaBuilder.user(),
+            viaBuilder.init(),
+            null,
+            null);
+    assertGolden(viaCanonical, WORKSPACE_HASH, WORKSPACE_JSON);
+
+    ContainerSpec resolved =
+        workspaceBuilder().dns("10.231.0.5", "127.0.0.53").extraNetwork("qits-private").build();
+    String json = SpecFingerprint.persistedJson(resolved);
+    assertTrue(json.contains("\"dns\":[\"10.231.0.5\",\"127.0.0.53\"]"), json);
+    assertTrue(json.contains("\"extraNetworks\":[\"qits-private\"]"), json);
+    assertNotEquals(WORKSPACE_HASH, SpecFingerprint.hash(resolved));
+    assertEquals(resolved.dns(), SpecFingerprint.fromPersistedJson(json).dns());
+    assertEquals(resolved.extraNetworks(), SpecFingerprint.fromPersistedJson(json).extraNetworks());
+  }
+
   private static void assertGolden(ContainerSpec spec, String hash, String json) {
     assertEquals(hash, SpecFingerprint.hash(spec), "spec_hash");
     assertEquals(json, SpecFingerprint.persistedJson(spec), "spec_json");
@@ -156,7 +206,9 @@ class SpecFingerprintGoldenTest {
         spec.pullPolicy(),
         spec.explicitName(),
         spec.user(),
-        spec.init());
+        spec.init(),
+        spec.dns(),
+        spec.extraNetworks());
   }
 
   private static ContainerSpec minimal() {

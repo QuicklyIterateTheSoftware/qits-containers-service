@@ -826,6 +826,8 @@ components:
           type: string
         init:
           type: boolean
+        privateEdge:
+          type: boolean
     StateDto:
       type: object
       properties:

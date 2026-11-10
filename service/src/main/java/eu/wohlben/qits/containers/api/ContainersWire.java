@@ -46,7 +46,20 @@ public final class ContainersWire {
       String cpus,
       Integer oomScoreAdj) {}
 
-  /** {@link ContainerSpec} on the wire. */
+  /**
+   * {@link ContainerSpec} on the wire — plus one field that is not the spec's.
+   *
+   * <p><b>{@code privateEdge} is an ask of this service, not a component of the container</b>
+   * (qits-1991). True means: join the {@code qits-private} overlay and resolve through the private
+   * edge's VIP on it first, then the host's own upstream resolvers. Neither the network's id nor the
+   * VIP nor the upstream list is something a caller can know — they are the host's, and this
+   * service is the one holding the docker socket — so the caller says only that it wants the edge,
+   * and {@code dockerhost/PrivateEdgeResolver} turns that into {@link ContainerSpec#extraNetworks}
+   * and {@link ContainerSpec#dns} at the moment of each run. It therefore never reaches the row:
+   * not the stored spec, not the hash. Toggling it recreates nothing; a container picks it up at its
+   * next run. Null and absent are false, so a caller written before the field existed asks for
+   * exactly what it asked for then. qits-workspaces sets it for its DIRECT admin workspaces.
+   */
   public record SpecDto(
       String image,
       List<String> entrypoint,
@@ -63,7 +76,8 @@ public final class ContainersWire {
       ContainerSpec.PullPolicy pullPolicy,
       String explicitName,
       String user,
-      Boolean init) {}
+      Boolean init,
+      Boolean privateEdge) {}
 
   /**
    * {@link LifecyclePolicy} on the wire. The two durations are seconds rather than an ISO string
@@ -297,6 +311,14 @@ public final class ContainersWire {
         dto.init() != null && dto.init());
     ContainerLabels.NS.requireOwnerLabels(spec.extraLabels());
     return spec;
+  }
+
+  /**
+   * Whether the caller asked for the private edge — see {@link SpecDto}. Read beside {@link
+   * #toSpec} rather than inside it, because the answer is not part of the spec it returns.
+   */
+  public static boolean privateEdge(SpecDto dto) {
+    return dto != null && Boolean.TRUE.equals(dto.privateEdge());
   }
 
   /** The policy a caller sent. A body with no policy is refused rather than defaulted. */

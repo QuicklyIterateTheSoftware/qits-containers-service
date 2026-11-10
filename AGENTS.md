@@ -188,6 +188,14 @@ exempt, including the ones that "cannot" block.
   inheriting somebody's reading of the build step). Adding a record component adds an entry;
   `SpecReflectionCoverageTest` and `ContainersWireReflectionTest` fail when the two drift apart.
   Neither test can prove the registration *works* — only a native binary can.
+- **`privateEdge` never reaches a row** (qits-1991). It rides beside the spec on the wire,
+  `ContainersResource` turns it into a `ContainerRegistry.AtRun` (`dockerhost/PrivateEdgeResolver`),
+  and the registry applies that to the spec of a run or a replace immediately before `driver.run` —
+  after the row was committed with the spec as asked. Keep it there: a resolution that entered the
+  stored spec or the hash would recreate every flagged container whenever the edge's VIP moved.
+  `SpecFingerprint` elides the driver's `dns`/`extraNetworks` while they are empty, which is what kept
+  every stored `spec_hash` byte-identical across driver 2026.1110.32907; a component the driver
+  adds next goes into that same mix-in for the same reason.
 - **Schema changes append to `core/src/main/resources/db/containers/migration/`.** Never edit an
   applied migration. V1's header records the two decisions it makes — no check constraints on enum
   columns, and the spec's environment is never persisted because it carries secrets. V2 is that rule

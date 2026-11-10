@@ -159,6 +159,27 @@ row prune (P7D), which refused every delete-then-ensure a consumer runs as an un
 **`createdBefore` being required is the boot reap's whole shape.** An owner passes the instant it
 came up, so what it started afterwards — including while the sweep runs — is not in the set.
 
+### The private edge (qits-1991)
+
+`spec.privateEdge: true` asks for one thing the caller cannot spell itself: join the `qits-private`
+overlay (attachable, encrypted, created by qits-deployments) and resolve through the private edge's
+swarm VIP on it first, then through the host's own upstream servers. qits-workspaces sets it for
+DIRECT admin workspaces. Absent and `false` are the same, and the client omits a null, so a caller
+that never heard of the flag sends the body it always sent.
+
+It is resolved **at every run** by `dockerhost/PrivateEdgeResolver`, off this service's own docker
+daemon, and handed to the driver as `ContainerSpec.extraNetworks` and `ContainerSpec.dns` — never
+stored, never hashed. So a flagged spec and its unflagged twin answer the same `specHash`, turning
+the flag on recreates nothing (a running container takes the edge at its next run), and an edge
+redeployed onto a new VIP moves no row. Every step degrades to today's behaviour with a warning and
+none fails the run: no `qits-private` network is no join and no resolver (a join to a missing
+network would fail the run itself); no single `qits.platform.deployments.app-name=qits-edge-private`
+service, or no VIP of it on the overlay, is the join with the host's resolvers; and no
+`# ExtServers: [...]` line in this container's `/etc/resolv.conf` is the same. **The resolver list is
+`[vip, upstream...]` or nothing** — `--dns` replaces the upstream rather than adding to it, so a
+VIP-only list would answer every public name REFUSED. The three names are
+`qits.containers.private-edge.{network,application,resolv-conf}`.
+
 ### Who may call
 
 Every route, reads included. The rest of the platform guards its writes and leaves its reads open
