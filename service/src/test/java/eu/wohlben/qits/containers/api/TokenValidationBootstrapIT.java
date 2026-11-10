@@ -210,6 +210,11 @@ public class TokenValidationBootstrapIT {
       // configuration; what the catalogue does not reach is stated where the ticker's gap is.
       overrides.put("qits.containers.buildkit.enabled", "false");
 
+      // NO PRIVATE-EDGE STARTUP CHECK, for the builder's reason: its three docker questions are a
+      // boot step and would land in HostBootstrapIT's edge counts. PrivateEdgeResolverTest proves
+      // the line it writes.
+      overrides.put("qits.containers.private-edge.startup-check", "false");
+
       // --- the two dials a host-run process has no deployment behind ----------------------------
       // Dark outside a deployment, like %dev/%test — both runtime keys, and both needed here because
       // a LAUNCHED ARTIFACT RUNS UNDER NEITHER PROFILE: the %test lines in application.properties

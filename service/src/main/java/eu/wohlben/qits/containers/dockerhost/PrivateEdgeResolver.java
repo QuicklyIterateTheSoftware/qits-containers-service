@@ -7,6 +7,8 @@ import eu.wohlben.qits.containers.driver.ContainersTimeouts;
 import eu.wohlben.qits.containers.driver.docker.ContainerProcess;
 import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
 import eu.wohlben.qits.containers.driver.spec.ContainersIdentifiers;
+import io.quarkus.runtime.StartupEvent;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Singleton;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -125,6 +127,62 @@ public class PrivateEdgeResolver {
   String resolvConf;
 
   DockerCommand docker = (argv, timeout, maxChars) -> ContainerProcess.run(null, argv, timeout, maxChars);
+
+  /**
+   * Whether the boot asks the three questions once and says what a flagged container would get —
+   * on in the shipped prod profile, off in every suite (their docker stand-ins count boot calls).
+   */
+  @ConfigProperty(name = "qits.containers.private-edge.startup-check", defaultValue = "false")
+  boolean startupCheck;
+
+  /**
+   * The resolution a flagged container would get on this host, logged once at boot (qits-1991).
+   * The only other moment it is visible is a flagged run, and those are rare — an admin workspace
+   * being created — so without this line nobody could say from the logs whether this host has the
+   * overlay, a VIP for the edge on it and an upstream line until a person made one. Read-only: it
+   * asks exactly what {@link #resolve} asks, creates nothing and joins nothing. Off the boot
+   * thread, because every question is a docker call with its own timeout.
+   */
+  void onStart(@Observes StartupEvent ignored) {
+    if (!startupCheck) {
+      return;
+    }
+    Thread.ofVirtual().name("private-edge-startup-check").start(this::logResolution);
+  }
+
+  /** The startup line; package-private so the suite can drive it with a scripted daemon. */
+  String logResolution() {
+    String line;
+    try {
+      Optional<String> networkId = networkId();
+      if (networkId.isEmpty()) {
+        line = "a privateEdge container on this host would run as asked: no " + network + " network";
+      } else {
+        Optional<String> vip = edgeVip(networkId.get(), "a privateEdge container");
+        List<String> upstreams = upstreams();
+        List<String> dns = new ArrayList<>();
+        if (vip.isPresent() && !upstreams.isEmpty()) {
+          dns.add(vip.get());
+          upstreams.stream().filter(u -> !u.equals(vip.get())).forEach(dns::add);
+        }
+        line =
+            "a privateEdge container on this host would join "
+                + network
+                + " ("
+                + networkId.get()
+                + ") with resolvers "
+                + (dns.isEmpty() ? "the host's own" : dns)
+                + ": edge VIP "
+                + vip.orElse("none")
+                + ", upstreams "
+                + upstreams;
+      }
+    } catch (RuntimeException e) {
+      line = "a privateEdge container's resolution could not be read at boot: " + e.getMessage();
+    }
+    LOG.info(line);
+    return line;
+  }
 
   PrivateEdgeResolver() {}
 

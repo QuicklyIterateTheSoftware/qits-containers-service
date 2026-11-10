@@ -124,6 +124,26 @@ class PrivateEdgeResolverTest {
   }
 
   @Test
+  void theStartupLineSaysWhatAFlaggedContainerWouldGetAndAsksNothingElse() {
+    assertEquals(
+        "a privateEdge container on this host would join qits-private ("
+            + NETWORK_ID
+            + ") with resolvers [10.231.0.5, 192.168.1.1, 9.9.9.9]: edge VIP 10.231.0.5, upstreams"
+            + " [192.168.1.1, 9.9.9.9]",
+        resolver().logResolution());
+    assertEquals(3, calls.size(), "the same three questions a run asks: " + calls);
+  }
+
+  @Test
+  void theStartupLineOnAHostWithNoOverlay() {
+    answer("network inspect", 1, "Error response from daemon: network qits-private not found\n");
+
+    assertEquals(
+        "a privateEdge container on this host would run as asked: no qits-private network",
+        resolver().logResolution());
+  }
+
+  @Test
   void aHostWithNoOverlayAddsNothingAtAllAndAsksNothingFurther() {
     answer("network inspect", 1, "Error response from daemon: network qits-private not found\n");
 
