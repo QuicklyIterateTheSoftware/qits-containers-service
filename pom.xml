@@ -142,7 +142,7 @@
         <qits.bootstrap-cli-pacts-qits-containers-service.version>2026.1018.185226</qits.bootstrap-cli-pacts-qits-containers-service.version>
         <qits.orchestrator-service-pacts-qits-containers-service.version>2026.1018.172917</qits.orchestrator-service-pacts-qits-containers-service.version>
         <qits.projects-service-pacts-qits-containers-service.version>2026.1110.94009</qits.projects-service-pacts-qits-containers-service.version>
-        <qits.workspaces-service-pacts-qits-containers-service.version>2026.1110.93118</qits.workspaces-service-pacts-qits-containers-service.version>
+        <qits.workspaces-service-pacts-qits-containers-service.version>2026.1111.70514</qits.workspaces-service-pacts-qits-containers-service.version>
 
         <!-- The docker layer: the spec types, the label namespace, the argv, the process runner, the
              driver and the pure GC decisions, released out of qits-containers-javalib
