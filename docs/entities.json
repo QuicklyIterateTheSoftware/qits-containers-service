@@ -1,5 +1,5 @@
 {
-  "formatVersion" : 1,
+  "formatVersion" : 2,
   "application" : "qits-containers",
   "entities" : [
     {
@@ -95,56 +95,64 @@
           "method" : "DELETE",
           "path" : "/containers/{owner}/{workload}/{ref}",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$DeleteResponse",
-          "kind" : "returns"
+          "kind" : "returns",
+          "cardinality" : "single"
         },
         {
           "operationId" : "destroyWorkloadContainers",
           "method" : "DELETE",
           "path" : "/containers/{owner}/{workload}",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$DestroyAllResponse",
-          "kind" : "returns"
+          "kind" : "returns",
+          "cardinality" : "collection"
         },
         {
           "operationId" : "ensureContainer",
           "method" : "PUT",
           "path" : "/containers/{owner}/{workload}/{ref}",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ContainerEnvelope",
-          "kind" : "body"
+          "kind" : "body",
+          "cardinality" : "single"
         },
         {
           "operationId" : "getContainer",
           "method" : "GET",
           "path" : "/containers/{owner}/{workload}/{ref}",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ContainerEnvelope",
-          "kind" : "returns"
+          "kind" : "returns",
+          "cardinality" : "single"
         },
         {
           "operationId" : "getContainerLogs",
           "method" : "GET",
           "path" : "/containers/{owner}/{workload}/{ref}/logs",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$LogsResponse",
-          "kind" : "returns"
+          "kind" : "returns",
+          "cardinality" : "single"
         },
         {
           "operationId" : "listOwnerContainers",
           "method" : "GET",
           "path" : "/containers/{owner}",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ContainerEnvelope",
-          "kind" : "returns"
+          "kind" : "returns",
+          "cardinality" : "collection"
         },
         {
           "operationId" : "listWorkloadContainers",
           "method" : "GET",
           "path" : "/containers/{owner}/{workload}",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ContainerEnvelope",
-          "kind" : "returns"
+          "kind" : "returns",
+          "cardinality" : "collection"
         },
         {
           "operationId" : "stopContainer",
           "method" : "POST",
           "path" : "/containers/{owner}/{workload}/{ref}/stop",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ContainerEnvelope",
-          "kind" : "returns"
+          "kind" : "returns",
+          "cardinality" : "single"
         }
       ]
     },
@@ -175,21 +183,24 @@
           "method" : "DELETE",
           "path" : "/volumes/{owner}/{name}",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$VolumeEnvelope",
-          "kind" : "returns"
+          "kind" : "returns",
+          "cardinality" : "single"
         },
         {
           "operationId" : "ensureVolume",
           "method" : "PUT",
           "path" : "/volumes/{owner}/{name}",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$VolumeEnvelope",
-          "kind" : "returns"
+          "kind" : "returns",
+          "cardinality" : "single"
         },
         {
           "operationId" : "getVolume",
           "method" : "GET",
           "path" : "/volumes/{owner}/{name}",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$VolumeEnvelope",
-          "kind" : "returns"
+          "kind" : "returns",
+          "cardinality" : "single"
         }
       ]
     }
