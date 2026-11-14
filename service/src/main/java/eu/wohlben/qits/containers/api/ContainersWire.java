@@ -131,6 +131,17 @@ public final class ContainersWire {
   /** A bounded tail, and whether the front of it was dropped. */
   public record LogsResponse(String text, boolean truncated) {}
 
+  /**
+   * Whether a container's resolvers are still what a run would give it (qits-2231): {@code dns} is
+   * what docker recorded at its run, {@code expected} what a {@code privateEdge} run would get now
+   * (empty off the overlay, or when no VIP-plus-upstream list can be made). {@code stale} is true
+   * only on the overlay with a choice to compare against and a first resolver that differs from it
+   * — the edge's VIP moved. {@code detail} says why nothing could be said when docker did not
+   * answer, and is null otherwise. A report only: recreating is the owner's call.
+   */
+  public record ResolversEnvelope(
+      boolean onPrivateEdge, List<String> dns, List<String> expected, boolean stale, String detail) {}
+
   /** {@code existed=false} is a success: the caller asked for nothing to be there, and nothing is. */
   public record DeleteResponse(
       UUID id, String containerName, boolean existed, String logTail, String detail) {}

@@ -14,6 +14,7 @@ import eu.wohlben.qits.containers.client.ContainersWire.EnsureRequest;
 import eu.wohlben.qits.containers.client.ContainersWire.Envelope;
 import eu.wohlben.qits.containers.client.ContainersWire.LogTail;
 import eu.wohlben.qits.containers.client.ContainersWire.Policy;
+import eu.wohlben.qits.containers.client.ContainersWire.Resolvers;
 import eu.wohlben.qits.containers.client.ContainersWire.Spec;
 import eu.wohlben.qits.containers.client.ContainersWire.VolumeEnvelope;
 import eu.wohlben.qits.containers.client.ContainersWire.VolumeState;
@@ -49,6 +50,9 @@ final class ContainersClientRows {
   static final String NO_CONTAINER = "no container";
   static final String CLAIMED_VOLUME = "a claimed volume";
   static final String NO_VOLUME = "no volume";
+
+  /** {@link #RUNNING} on the private edge, still resolving through the VIP the edge has left (qits-2231). */
+  static final String RUNNING_EDGE_MOVED = "a running container whose private edge moved";
 
   /** The delete door with {@code volumes=true}: the same seed as {@link #RUNNING}, deleted with its volumes. */
   static final String RUNNING_WITH_VOLUME = "a running container with its volumes";
@@ -105,6 +109,20 @@ final class ContainersClientRows {
                     assertNotNull(answer.value().text());
                   },
                   "text", "truncated"));
+      case RESOLVERS ->
+          List.of(
+              row(feature, "resolvers", RUNNING_EDGE_MOVED, "getContainerResolvers",
+                  (url, op) -> {
+                    ContainersAnswer<Resolvers> answer =
+                        client(url).resolvers(owner(op), workload(op), ref(op), TIMEOUT);
+                    assertTrue(answer.succeeded(), answer.detail());
+                    assertTrue(answer.value().onPrivateEdge(), "onPrivateEdge");
+                    assertTrue(answer.value().stale(), "stale");
+                    assertFalse(answer.value().expected().isEmpty(), "expected");
+                  },
+                  "onPrivateEdge", "stale", "dns", "expected"),
+              row(feature, "resolvers", NO_CONTAINER, "getContainerResolvers",
+                  (url, op) -> assertRefused(op, client(url).resolvers(owner(op), workload(op), ref(op), TIMEOUT))));
       case STOP ->
           List.of(
               row(feature, "stop", RUNNING, "stopContainer",

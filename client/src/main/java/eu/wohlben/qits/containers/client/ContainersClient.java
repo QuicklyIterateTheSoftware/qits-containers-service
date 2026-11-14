@@ -12,6 +12,7 @@ import eu.wohlben.qits.containers.client.ContainersWire.Envelope;
 import eu.wohlben.qits.containers.client.ContainersWire.ErrorBody;
 import eu.wohlben.qits.containers.client.ContainersWire.Listing;
 import eu.wohlben.qits.containers.client.ContainersWire.LogTail;
+import eu.wohlben.qits.containers.client.ContainersWire.Resolvers;
 import eu.wohlben.qits.containers.client.ContainersWire.VolumeEnvelope;
 import eu.wohlben.qits.eventstream.CausationHeader;
 import eu.wohlben.qits.eventstream.CausationScope;
@@ -244,6 +245,25 @@ public final class ContainersClient {
     return answer(
         exchange(builder(placePath(owner, workload, ref) + "/logs?tail=" + tail, deadline).GET()),
         LogTail.class);
+  }
+
+  /**
+   * Whether this container still resolves through the private edge's VIP of today (qits-2231). The
+   * service resolves a {@code privateEdge} container's resolvers at its run and never again, so one
+   * run before the edge moved keeps the dead VIP; {@link Resolvers#stale()} says so, and recreating
+   * the container — when it is idle — is the caller's to decide. A 404 is a {@link Refused}: no row
+   * names this place.
+   */
+  public ContainersAnswer<Resolvers> resolvers(String owner, String workload, String ref) {
+    return resolvers(owner, workload, ref, requestTimeout);
+  }
+
+  /** {@link #resolvers(String, String, String)} against a deadline of the caller's. */
+  public ContainersAnswer<Resolvers> resolvers(
+      String owner, String workload, String ref, Duration deadline) {
+    return answer(
+        exchange(builder(placePath(owner, workload, ref) + "/resolvers", deadline).GET()),
+        Resolvers.class);
   }
 
   // --- the writes that change what is running -------------------------------------------------------

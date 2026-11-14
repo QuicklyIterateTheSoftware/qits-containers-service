@@ -10,6 +10,7 @@ import eu.wohlben.qits.containers.api.ContainersWire.ErrorBody;
 import eu.wohlben.qits.containers.api.ContainersWire.ListResponse;
 import eu.wohlben.qits.containers.api.ContainersWire.LogsResponse;
 import eu.wohlben.qits.containers.api.ContainersWire.Recreate;
+import eu.wohlben.qits.containers.api.ContainersWire.ResolversEnvelope;
 import eu.wohlben.qits.containers.api.ContainersWire.StateDto;
 import eu.wohlben.qits.containers.control.ContainerRegistry;
 import eu.wohlben.qits.containers.dockerhost.PlatformBuildkit;
@@ -221,6 +222,39 @@ public class ContainersResource {
     place(owner, workload, ref); // the 404, before any docker call
     ContainersDriver.LogTail logs = registry.logs(owner, workload, ref, tail);
     return new LogsResponse(logs.text(), logs.truncated());
+  }
+
+  /**
+   * Whether this container still resolves through the private edge's VIP of today (qits-2231).
+   *
+   * <p>The edge's resolution is made at a run and never stored ({@link ContainerRegistry.AtRun}),
+   * so a container run before the edge's swarm service moved to a new VIP keeps the dead one as its
+   * first resolver until it is run again. This reports that — one inspect of the container, and the
+   * questions a run would ask only when it is on the overlay — so its owner can recreate it when it
+   * is idle. It changes nothing, and it answers 200 with {@code stale=false} and a {@code detail}
+   * when docker could not say: "could not find out" is never a reason to recreate.
+   */
+  @GET
+  @jakarta.annotation.security.RolesAllowed({"qits:system", "qits:agent"})
+  @Path("/{owner}/{workload}/{ref}/resolvers")
+  @Operation(
+      operationId = "getContainerResolvers",
+      summary = "Whether this container's resolvers are still what a privateEdge run would give it")
+  @APIResponse(responseCode = "200", description = "What it carries, what it would get, and whether those differ")
+  @APIResponse(responseCode = "404", description = "No row names this place")
+  public ResolversEnvelope resolvers(
+      @PathParam("owner") String owner,
+      @PathParam("workload") String workload,
+      @PathParam("ref") String ref) {
+    guard.require(owner);
+    PrivateEdgeResolver.Staleness staleness =
+        privateEdge.staleness(place(owner, workload, ref).containerName());
+    return new ResolversEnvelope(
+        staleness.onPrivateEdge(),
+        staleness.dns(),
+        staleness.expected(),
+        staleness.stale(),
+        staleness.detail());
   }
 
   // --- the writes that change what is running -----------------------------------------------------

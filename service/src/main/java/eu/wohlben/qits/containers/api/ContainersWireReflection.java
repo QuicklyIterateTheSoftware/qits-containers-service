@@ -13,7 +13,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
  *
  * <p>Most of {@link ContainersWire} <em>is</em> auto-registered: Quarkus reflects the types it finds
  * on a resource method signature, and {@code ContainerEnvelope}, {@code ListResponse},
- * {@code LogsResponse}, {@code DeleteResponse}, {@code DestroyAllResponse},
+ * {@code LogsResponse}, {@code ResolversEnvelope}, {@code DeleteResponse}, {@code DestroyAllResponse},
  * {@code VolumeEnvelope} and {@code EnsureRequest} are all one of those. {@link
  * ContainersWire.ErrorBody} is not: it reaches a caller only as the entity of a {@code Response} —
  * from {@code ensure}'s {@code IMAGE_MISSING} arm, from {@code InvalidRequestMapper}, from
@@ -54,6 +54,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
       ContainersWire.ContainerEnvelope.class,
       ContainersWire.ListResponse.class,
       ContainersWire.LogsResponse.class,
+      ContainersWire.ResolversEnvelope.class,
       ContainersWire.DeleteResponse.class,
       ContainersWire.DestroyedDto.class,
       ContainersWire.DestroyAllResponse.class,

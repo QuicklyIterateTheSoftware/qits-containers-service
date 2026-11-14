@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import eu.wohlben.qits.containers.control.ContainerNames;
 import eu.wohlben.qits.containers.control.FakeContainersDriver;
+import eu.wohlben.qits.containers.dockerhost.PrivateEdgeResolver;
+import eu.wohlben.qits.containers.dockerhost.ScriptedEdgeHost;
 import eu.wohlben.qits.containers.persistence.CtContainerRepository;
 import eu.wohlben.qits.containers.persistence.CtVolumeRepository;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -68,6 +70,8 @@ class ContainersApiTest {
   @Inject CtContainerRepository containers;
 
   @Inject CtVolumeRepository volumes;
+
+  @Inject PrivateEdgeResolver privateEdge;
 
   @BeforeEach
   void wipe() {
@@ -359,6 +363,36 @@ class ContainersApiTest {
         .body("truncated", is(false));
 
     given().when().get("/containers/api/containers/qits-ci/step/nothing/logs").then().statusCode(404);
+  }
+
+  @Test
+  void theResolversReportAContainerTheEdgeMovedAwayFromAndFourOhFourWithNoRow() {
+    ensured();
+
+    try (ScriptedEdgeHost host = ScriptedEdgeHost.edgeMoved(privateEdge)) {
+      given()
+          .when()
+          .get(PLACE + "/resolvers")
+          .then()
+          .statusCode(200)
+          .body("onPrivateEdge", is(true))
+          .body("dns", equalTo(List.of("10.231.0.2", "127.0.0.53")))
+          .body("expected", equalTo(List.of("10.231.0.212", "127.0.0.53")))
+          .body("stale", is(true))
+          .body("detail", nullValue());
+      assertEquals(
+          ContainerNames.of(OWNER, WORKLOAD, REF),
+          host.calls().getFirst().getLast(),
+          "the row's container is the one inspected");
+
+      int asked = host.calls().size();
+      given()
+          .when()
+          .get("/containers/api/containers/qits-ci/step/nothing/resolvers")
+          .then()
+          .statusCode(404);
+      assertEquals(asked, host.calls().size(), "the 404 is the row's, before any docker call");
+    }
   }
 
   // --- the writes that change what is running ------------------------------------------------------

@@ -134,6 +134,7 @@ class MachineGuardTest {
         .statusCode(403);
 
     machine().when().get("/containers/api/containers/dev-qits-workspaces").then().statusCode(403);
+    machine().when().get(OTHER_PLACE + "/resolvers").then().statusCode(403);
     machine().when().get("/containers/api/volumes/dev-qits-workspaces/whatever").then().statusCode(403);
   }
 

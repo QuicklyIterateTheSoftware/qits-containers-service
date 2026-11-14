@@ -267,6 +267,46 @@ paths:
       - SecurityScheme:
         - qits:system
         - qits:agent
+  /containers/api/containers/{owner}/{workload}/{ref}/resolvers:
+    get:
+      summary: Whether this container's resolvers are still what a privateEdge run
+        would give it
+      operationId: getContainerResolvers
+      parameters:
+      - name: owner
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: ref
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: workload
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "What it carries, what it would get, and whether those differ"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResolversEnvelope"
+        "404":
+          description: No row names this place
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Containers Resource
+      security:
+      - SecurityScheme:
+        - qits:system
+        - qits:agent
   /containers/api/containers/{owner}/{workload}/{ref}/stop:
     post:
       summary: "Stop what is here, leaving it restartable"
@@ -749,6 +789,23 @@ components:
       enum:
       - never
       - ifChanged
+    ResolversEnvelope:
+      type: object
+      properties:
+        onPrivateEdge:
+          type: boolean
+        dns:
+          type: array
+          items:
+            type: string
+        expected:
+          type: array
+          items:
+            type: string
+        stale:
+          type: boolean
+        detail:
+          type: string
     SecurityDto:
       type: object
       properties:

@@ -51,6 +51,7 @@ class AgentReadAccessTest {
     agent().when().get("/containers/api/containers/dev-qits-ci").then().statusCode(200);
     agent().when().get("/containers/api/containers/dev-qits-ci/agent").then().statusCode(200);
     agent().when().get(PLACE + "/logs?tail=10").then().statusCode(200);
+    agent().when().get(PLACE + "/resolvers").then().statusCode(200);
 
     owner().when().delete(PLACE).then().statusCode(200);
   }

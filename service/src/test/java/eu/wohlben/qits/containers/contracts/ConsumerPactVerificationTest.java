@@ -132,6 +132,11 @@ class ConsumerPactVerificationTest {
     return states.params(ProviderStates.A_RUNNING_CONTAINER);
   }
 
+  @State(ProviderStates.A_RUNNING_CONTAINER_WHOSE_PRIVATE_EDGE_MOVED)
+  Map<String, String> aRunningContainerWhosePrivateEdgeMoved() {
+    return states.params(ProviderStates.A_RUNNING_CONTAINER_WHOSE_PRIVATE_EDGE_MOVED);
+  }
+
   @State(ProviderStates.A_RUNNING_CONTAINER_WITH_ITS_VOLUMES)
   Map<String, String> aRunningContainerWithItsVolumes() {
     return states.params(ProviderStates.A_RUNNING_CONTAINER_WITH_ITS_VOLUMES);

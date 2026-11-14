@@ -22,11 +22,14 @@ import eu.wohlben.qits.containers.client.ContainersWire.LogTail;
 import eu.wohlben.qits.containers.client.ContainersWire.Observed;
 import eu.wohlben.qits.containers.client.ContainersWire.Policy;
 import eu.wohlben.qits.containers.client.ContainersWire.Recreate;
+import eu.wohlben.qits.containers.client.ContainersWire.Resolvers;
 import eu.wohlben.qits.containers.client.ContainersWire.Spec;
 import eu.wohlben.qits.containers.client.ContainersWire.VolumeEnvelope;
 import eu.wohlben.qits.containers.client.ContainersWire.VolumeState;
 import eu.wohlben.qits.containers.control.ContainerNames;
 import eu.wohlben.qits.containers.control.FakeContainersDriver;
+import eu.wohlben.qits.containers.dockerhost.PrivateEdgeResolver;
+import eu.wohlben.qits.containers.dockerhost.ScriptedEdgeHost;
 import eu.wohlben.qits.containers.driver.ContainersDriver;
 import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
 import eu.wohlben.qits.containers.persistence.CtContainerRepository;
@@ -96,6 +99,8 @@ class ContainersClientWireTest {
   @Inject CtContainerRepository containers;
 
   @Inject CtVolumeRepository volumes;
+
+  @Inject PrivateEdgeResolver privateEdge;
 
   private ContainersClient client;
 
@@ -336,6 +341,26 @@ class ContainersClientWireTest {
     assertTrue(tail.succeeded());
     assertTrue(tail.value().text().contains("the workload said this"));
     assertFalse(tail.value().truncated());
+  }
+
+  @Test
+  void theResolversBindAndAPlaceWithNoRowIsAFourOhFour() {
+    assertEquals(404, ((Refused<Resolvers>) client.resolvers(OWNER, WORKLOAD, REF)).status());
+    assertTrue(client.ensure(OWNER, WORKLOAD, REF, EXPLICIT).succeeded());
+
+    try (ScriptedEdgeHost ignored = ScriptedEdgeHost.edgeMoved(privateEdge)) {
+      ContainersAnswer<Resolvers> answer = client.resolvers(OWNER, WORKLOAD, REF);
+
+      assertInstanceOf(Ready.class, answer, answer.detail());
+      assertEquals(
+          new Resolvers(
+              true,
+              List.of("10.231.0.2", "127.0.0.53"),
+              List.of("10.231.0.212", "127.0.0.53"),
+              true,
+              null),
+          answer.value());
+    }
   }
 
   // --- the writes that change what is running -----------------------------------------------------------

@@ -260,6 +260,31 @@
       ]
     },
     {
+      "name": "a running container whose private edge moved",
+      "slug": "a-running-container-whose-private-edge-moved",
+      "params": {
+        "owner": "qits-workspaces",
+        "ref": "contract-1",
+        "workload": "editor"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "getContainerResolvers",
+          "method": "GET",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}/resolvers",
+          "status": 200,
+          "file": "a-running-container-whose-private-edge-moved/getContainerResolvers.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
       "name": "a running container with its volumes",
       "slug": "a-running-container-with-its-volumes",
       "params": {
@@ -464,6 +489,19 @@
           "path": "/containers/api/containers/{owner}/{workload}/{ref}",
           "status": 404,
           "file": "no-container/getContainer.json",
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "getContainerResolvers",
+          "method": "GET",
+          "path": "/containers/api/containers/{owner}/{workload}/{ref}/resolvers",
+          "status": 404,
+          "file": "no-container/getContainerResolvers.json",
           "frozen": {
             "ids": [],
             "instants": [],

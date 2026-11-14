@@ -91,6 +91,10 @@ class ContainersClientRequestTest {
     assertEquals("/containers/api/containers/qits-ci/step/run-1/logs", stub.last().path());
     assertEquals("tail=200", stub.last().query());
 
+    client.resolvers("qits-ci", "step", "run-1");
+    assertEquals("GET", stub.last().method());
+    assertEquals("/containers/api/containers/qits-ci/step/run-1/resolvers", stub.last().path());
+
     client.delete("qits-ci", "step", "run-1", true, true);
     assertEquals("DELETE", stub.last().method());
     assertEquals("/containers/api/containers/qits-ci/step/run-1", stub.last().path());

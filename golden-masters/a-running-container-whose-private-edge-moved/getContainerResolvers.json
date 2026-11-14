@@ -1,0 +1,13 @@
+{
+  "onPrivateEdge": true,
+  "dns": [
+    "10.231.0.2",
+    "127.0.0.53"
+  ],
+  "expected": [
+    "10.231.0.212",
+    "127.0.0.53"
+  ],
+  "stale": true,
+  "detail": null
+}

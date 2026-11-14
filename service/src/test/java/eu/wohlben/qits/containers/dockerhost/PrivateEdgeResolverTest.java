@@ -1,6 +1,9 @@
 package eu.wohlben.qits.containers.dockerhost;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -271,6 +274,156 @@ class PrivateEdgeResolverTest {
             .extraNetwork("qits-private")
             .build(),
         resolved);
+  }
+
+  // --- staleness (qits-2231) ------------------------------------------------------------------------
+
+  /** The edge recreated onto a new VIP: the scripted service now answers 10.231.0.212. */
+  private void edgeMovedTo(String vip) {
+    answer(
+        "service inspect",
+        0,
+        "[{\"NetworkID\":\"" + NETWORK_ID + "\",\"Addr\":\"" + vip + "/20\"}]\n");
+  }
+
+  /** The container's own inspect: its recorded Dns, then the networks it is attached to. */
+  private void container(String dnsJson, String... networks) {
+    answer("container inspect", 0, dnsJson + " " + String.join(" ", networks) + " \n");
+  }
+
+  @Test
+  void aContainerStillOnTheVipTheEdgeLeftIsStale() {
+    container("[\"10.231.0.2\",\"192.168.1.1\"]", "qits-net", "qits-private");
+    edgeMovedTo("10.231.0.212");
+
+    PrivateEdgeResolver.Staleness staleness = resolver().staleness("qits-ws-1");
+
+    assertTrue(staleness.onPrivateEdge());
+    assertEquals(List.of("10.231.0.2", "192.168.1.1"), staleness.dns());
+    assertEquals(List.of("10.231.0.212", "192.168.1.1", "9.9.9.9"), staleness.expected());
+    assertTrue(staleness.stale());
+    assertNull(staleness.detail());
+    assertEquals(
+        List.of(
+            "docker",
+            "container",
+            "inspect",
+            "--format",
+            "{{json .HostConfig.Dns}} {{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}",
+            "qits-ws-1"),
+        calls.getFirst(),
+        "one inspect of the container, through the same guarded seam");
+  }
+
+  @Test
+  void aContainerWhoseFirstResolverIsTheEdgesIsNotStaleWhateverFollowsIt() {
+    // Upstream-only differences are not stale: the first resolver is the one the edge is reached on.
+    container("[\"10.231.0.5\",\"1.1.1.1\"]", "qits-net", "qits-private");
+
+    PrivateEdgeResolver.Staleness staleness = resolver().staleness("qits-ws-1");
+
+    assertTrue(staleness.onPrivateEdge());
+    assertEquals(List.of("10.231.0.5", "192.168.1.1", "9.9.9.9"), staleness.expected());
+    assertFalse(staleness.stale());
+  }
+
+  @Test
+  void aContainerOffTheOverlayIsNotStaleAndTheEdgeIsNotAsked() {
+    container("[]", "qits-net");
+
+    PrivateEdgeResolver.Staleness staleness = resolver().staleness("qits-ws-1");
+
+    assertFalse(staleness.onPrivateEdge());
+    assertEquals(List.of(), staleness.dns());
+    assertEquals(List.of(), staleness.expected());
+    assertFalse(staleness.stale());
+    assertEquals(1, calls.size(), "no network, service or resolv.conf question: " + calls);
+  }
+
+  @Test
+  void noEdgeVipMeansNoChoiceAndNothingStale() {
+    container("[\"10.231.0.2\",\"192.168.1.1\"]", "qits-private");
+    answer("service ls", 0, "");
+
+    PrivateEdgeResolver.Staleness staleness = resolver().staleness("qits-ws-1");
+
+    assertTrue(staleness.onPrivateEdge());
+    assertEquals(List.of(), staleness.expected());
+    assertFalse(staleness.stale());
+  }
+
+  @Test
+  void noUpstreamMeansNoChoiceAndNothingStale() throws IOException {
+    container("[\"10.231.0.2\",\"192.168.1.1\"]", "qits-private");
+    edgeMovedTo("10.231.0.212");
+    Files.writeString(resolvConf, "nameserver 127.0.0.11\n");
+
+    PrivateEdgeResolver.Staleness staleness = resolver().staleness("qits-ws-1");
+
+    assertEquals(List.of(), staleness.expected());
+    assertFalse(staleness.stale());
+  }
+
+  @Test
+  void aContainerJoinedWithTheHostsResolversIsStaleOnceAChoiceExists() {
+    // Run while the edge had no VIP (or no upstream line), so docker recorded no Dns at all.
+    container("[]", "qits-net", "qits-private");
+
+    PrivateEdgeResolver.Staleness staleness = resolver().staleness("qits-ws-1");
+
+    assertTrue(staleness.onPrivateEdge());
+    assertEquals(List.of(), staleness.dns());
+    assertEquals(List.of("10.231.0.5", "192.168.1.1", "9.9.9.9"), staleness.expected());
+    assertTrue(staleness.stale());
+  }
+
+  @Test
+  void aNullDnsIsTheEmptyList() {
+    container("null", "qits-private");
+
+    PrivateEdgeResolver.Staleness staleness = resolver().staleness("qits-ws-1");
+
+    assertEquals(List.of(), staleness.dns());
+    assertTrue(staleness.stale());
+  }
+
+  @Test
+  void anInspectDockerRefusedIsNotStaleAndSaysWhy() {
+    answer("container inspect", 1, "Error response from daemon: No such object: qits-ws-1\n");
+
+    PrivateEdgeResolver.Staleness staleness = resolver().staleness("qits-ws-1");
+
+    assertFalse(staleness.onPrivateEdge());
+    assertFalse(staleness.stale());
+    assertTrue(staleness.detail().contains("No such object"), staleness.detail());
+    assertEquals(1, calls.size(), calls.toString());
+  }
+
+  @Test
+  void anInspectThatTimedOutIsNotStaleAndSaysWhy() {
+    answers.put("container inspect", new ContainerProcess.Result(-1, "", true, false));
+
+    PrivateEdgeResolver.Staleness staleness = resolver().staleness("qits-ws-1");
+
+    assertFalse(staleness.stale());
+    assertTrue(staleness.detail().contains("did not answer"), staleness.detail());
+  }
+
+  @Test
+  void anUnreadableInspectIsNotStaleAndSaysWhy() {
+    answer("container inspect", 0, "<no value> qits-private\n");
+
+    PrivateEdgeResolver.Staleness staleness = resolver().staleness("qits-ws-1");
+
+    assertFalse(staleness.stale());
+    assertNotNull(staleness.detail());
+  }
+
+  @Test
+  void theChoiceIsTheResolutionARunWouldMake() {
+    assertEquals(List.of("10.231.0.5", "192.168.1.1", "9.9.9.9"), resolver().choice());
+    answer("network inspect", 1, "Error response from daemon: network qits-private not found\n");
+    assertEquals(List.of(), resolver().choice());
   }
 
   @Test

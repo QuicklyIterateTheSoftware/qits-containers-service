@@ -193,6 +193,9 @@ exempt, including the ones that "cannot" block.
   and the registry applies that to the spec of a run or a replace immediately before `driver.run` —
   after the row was committed with the spec as asked. Keep it there: a resolution that entered the
   stored spec or the hash would recreate every flagged container whenever the edge's VIP moved.
+  The other side of that is a running container keeping a dead VIP until its next run, so `GET
+  …/{ref}/resolvers` (`PrivateEdgeResolver.staleness`, qits-2231) reports a first resolver that is
+  no longer the edge's and its owner recreates it; this service reports and never recreates.
   `SpecFingerprint` elides the driver's `dns`/`extraNetworks` while they are empty, which is what kept
   every stored `spec_hash` byte-identical across driver 2026.1110.32907; a component the driver
   adds next joins `LATE_COMPONENTS` there for the same reason. The elision edits the canonical JSON

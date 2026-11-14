@@ -23,6 +23,8 @@ public enum Feature {
   LIST_OWNER,
   /** {@code logs(...)}: {@code GET /containers/{owner}/{workload}/{ref}/logs}. */
   LOGS,
+  /** {@code resolvers(...)}: {@code GET …/resolvers}, a private edge that moved and no row. */
+  RESOLVERS,
   /** {@code stop(...)}: {@code POST …/stop}. */
   STOP,
   /** {@code touch(...)}: {@code POST …/touch}. */
@@ -62,6 +64,7 @@ public enum Feature {
                   ? LIST_OWNER
                   : LIST_WORKLOAD;
           case "logs" -> LOGS;
+          case "resolvers" -> RESOLVERS;
           case "stop" -> STOP;
           case "touch" -> TOUCH;
           case "delete" -> DELETE;

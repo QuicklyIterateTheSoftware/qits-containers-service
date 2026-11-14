@@ -33,7 +33,10 @@ import org.jboss.logging.Logger;
  * this class asks the daemon, at every run, and hands the driver a spec with {@link
  * ContainerSpec#extraNetworks} and {@link ContainerSpec#dns} filled in. The result is never stored
  * and never hashed ({@link ContainerRegistry.AtRun}): an edge redeployed onto a new VIP is picked up
- * by the next run of each container without a single row reading as changed.
+ * by the next run of each container without a single row reading as changed. A container that is
+ * not run again keeps the VIP it was given, so {@link #staleness} reports one whose first resolver
+ * is no longer the edge's — read through {@code GET …/{ref}/resolvers} — and its owner recreates it
+ * when it is idle (qits-2231). Reporting is all this class does about it.
  *
  * <p><b>Three questions, each with a fallback that is today's behaviour, never a refusal.</b>
  *
@@ -158,13 +161,10 @@ public class PrivateEdgeResolver {
       if (networkId.isEmpty()) {
         line = "a privateEdge container on this host would run as asked: no " + network + " network";
       } else {
-        Optional<String> vip = edgeVip(networkId.get(), "a privateEdge container");
-        List<String> upstreams = upstreams();
-        List<String> dns = new ArrayList<>();
-        if (vip.isPresent() && !upstreams.isEmpty()) {
-          dns.add(vip.get());
-          upstreams.stream().filter(u -> !u.equals(vip.get())).forEach(dns::add);
-        }
+        Choice choice = choiceOn(networkId.get(), "a privateEdge container");
+        Optional<String> vip = choice.vip();
+        List<String> upstreams = choice.upstreams();
+        List<String> dns = choice.dns();
         line =
             "a privateEdge container on this host would join "
                 + network
@@ -212,13 +212,10 @@ public class PrivateEdgeResolver {
 
     List<String> dns = spec.dns();
     if (dns.isEmpty()) {
-      Optional<String> vip = edgeVip(networkId.get(), containerName);
-      List<String> upstreams = upstreams();
-      if (vip.isPresent() && !upstreams.isEmpty()) {
-        dns = new ArrayList<>();
-        dns.add(vip.get());
-        upstreams.stream().filter(u -> !u.equals(vip.get())).forEach(dns::add);
-      } else if (vip.isPresent()) {
+      Choice choice = choiceOn(networkId.get(), containerName);
+      if (!choice.dns().isEmpty()) {
+        dns = choice.dns();
+      } else if (choice.vip().isPresent()) {
         LOG.warnf(
             "%s joins %s but keeps the host's resolvers: %s names no upstream server (no '%s' line),"
                 + " and a resolver list holding only the private edge's VIP would answer every"
@@ -241,6 +238,103 @@ public class PrivateEdgeResolver {
         resolved.extraNetworks().contains(network) ? network : network + " (its primary network)",
         resolved.dns().isEmpty() ? "the host's own" : resolved.dns());
     return resolved;
+  }
+
+  /**
+   * The resolver list a flagged container would be given if it were run now: {@code [vip,
+   * upstream...]}, or empty — the host's own — unless the overlay is there, exactly one edge VIP
+   * was found on it and at least one upstream. The same all-or-nothing rule {@link #resolve}
+   * applies, asked the same questions. Never throws.
+   */
+  public List<String> choice() {
+    Optional<String> networkId = networkId();
+    return networkId.isEmpty() ? List.of() : choiceOn(networkId.get(), "a privateEdge container").dns();
+  }
+
+  /**
+   * Whether a running container still resolves through the edge's VIP of today (qits-2231).
+   *
+   * <p>The resolution is made at the run and never stored, so a swarm service recreated onto a new
+   * VIP leaves every container run before it with a first resolver nothing answers on — forever,
+   * since nothing here touches a running container. This is the report that lets its owner notice
+   * and recreate it at a moment of its own choosing; this service recreates nothing.
+   *
+   * @param onPrivateEdge the container is attached to the overlay, whatever the flag said
+   * @param dns the resolvers docker recorded against the container at its run, in order
+   * @param expected what {@link #choice} answers now; empty when the container is not on the
+   *     overlay, because it was then never asked
+   * @param stale on the overlay, a choice can be made, and the container's first resolver is not
+   *     the choice's first — a VIP that moved, or a container run before a VIP could be found. An
+   *     upstream-only difference is not stale: the first resolver is the one the edge is reached on
+   *     (the runner's qits-2091 rule, restated)
+   * @param detail why nothing could be said, when docker did not answer; null otherwise
+   */
+  public record Staleness(
+      boolean onPrivateEdge, List<String> dns, List<String> expected, boolean stale, String detail) {}
+
+  /**
+   * {@link Staleness} for one container: one {@code docker container inspect}, and the questions
+   * {@link #choice} asks only when it is on the overlay. Never throws — a daemon that did not
+   * answer, or an answer that would not read, is {@code stale=false} with the reason in {@code
+   * detail}, because recreating a container on a guess is worse than reporting nothing.
+   */
+  public Staleness staleness(String containerName) {
+    try {
+      ContainerProcess.Result inspected =
+          call(
+              List.of(
+                  runtime,
+                  "container",
+                  "inspect",
+                  "--format",
+                  "{{json .HostConfig.Dns}} {{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}",
+                  containerName));
+      if (inspected.exitCode() != 0 || inspected.timedOut()) {
+        return unknown("could not inspect " + containerName + " (" + brief(inspected) + ")");
+      }
+      String line = lastLine(inspected.output());
+      List<String> words = line.isEmpty() ? List.of() : List.of(line.split("\\s+"));
+      if (words.isEmpty()) {
+        return unknown("the inspect of " + containerName + " answered nothing");
+      }
+      List<String> dns = new ArrayList<>();
+      JsonNode recorded = JSON.readTree(words.getFirst());
+      if (recorded != null && recorded.isArray()) {
+        recorded.forEach(server -> dns.add(server.asText()));
+      } else if (recorded == null || !recorded.isNull()) {
+        return unknown("the inspect of " + containerName + " answered no resolver list: " + line);
+      }
+      boolean onPrivateEdge = words.subList(1, words.size()).contains(network);
+      if (!onPrivateEdge) {
+        return new Staleness(false, List.copyOf(dns), List.of(), false, null);
+      }
+      List<String> expected = choice();
+      boolean stale =
+          !expected.isEmpty() && (dns.isEmpty() || !dns.getFirst().equals(expected.getFirst()));
+      return new Staleness(true, List.copyOf(dns), expected, stale, null);
+    } catch (Exception e) {
+      return unknown("could not read the resolvers of " + containerName + ": " + e.getMessage());
+    }
+  }
+
+  private static Staleness unknown(String detail) {
+    LOG.debugf("No resolver staleness to report: %s", detail);
+    return new Staleness(false, List.of(), List.of(), false, detail);
+  }
+
+  /** What the edge and the upstreams answered, and the resolver list they make together. */
+  private record Choice(Optional<String> vip, List<String> upstreams, List<String> dns) {}
+
+  /** The second and third questions, on an overlay already found; {@code who} names the warning. */
+  private Choice choiceOn(String networkId, String who) {
+    Optional<String> vip = edgeVip(networkId, who);
+    List<String> upstreams = upstreams();
+    List<String> dns = new ArrayList<>();
+    if (vip.isPresent() && !upstreams.isEmpty()) {
+      dns.add(vip.get());
+      upstreams.stream().filter(u -> !u.equals(vip.get())).forEach(dns::add);
+    }
+    return new Choice(vip, upstreams, List.copyOf(dns));
   }
 
   /** The overlay's id, or empty — with the warning — when the host has none or did not answer. */

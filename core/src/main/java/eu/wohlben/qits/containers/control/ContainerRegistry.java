@@ -286,7 +286,9 @@ public class ContainerRegistry {
    * point: the hash is of the ask, so an edge VIP that moved, a resolver list the host changed or a
    * flag a caller started sending does not read as a spec change and recreates nothing — a running
    * container picks the resolution up at its next run, and a {@code RESTART} keeps what docker
-   * recorded against the container at the run that made it.
+   * recorded against the container at the run that made it. Until that run, {@code GET
+   * …/{ref}/resolvers} reports whether what it carries is still what a run would give it (qits-2231),
+   * so its owner can recreate it; nothing here does.
    *
    * <p>An interface in {@code control} with its implementation in the service module, because this
    * module never touches docker directly and resolving the edge is several docker calls. It must not

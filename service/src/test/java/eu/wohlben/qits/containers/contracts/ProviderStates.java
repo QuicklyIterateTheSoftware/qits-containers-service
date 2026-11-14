@@ -3,6 +3,8 @@ package eu.wohlben.qits.containers.contracts;
 import eu.wohlben.qits.containers.control.ContainerNames;
 import eu.wohlben.qits.containers.control.ContainerRegistry;
 import eu.wohlben.qits.containers.control.FakeContainersDriver;
+import eu.wohlben.qits.containers.dockerhost.PrivateEdgeResolver;
+import eu.wohlben.qits.containers.dockerhost.ScriptedEdgeHost;
 import eu.wohlben.qits.containers.driver.ContainersDriver;
 import eu.wohlben.qits.containers.driver.spec.ContainerSpec;
 import eu.wohlben.qits.containers.driver.spec.LifecyclePolicy;
@@ -49,6 +51,16 @@ public class ProviderStates {
    */
   public static final String A_RUNNING_CONTAINER_WITH_ITS_VOLUMES =
       "a running container with its volumes";
+  /**
+   * The running container at {@code qits-workspaces/editor/contract-1}, on the private edge's
+   * overlay and still resolving through the VIP it was run with ({@code 10.231.0.2}), while the
+   * edge's swarm service now sits on {@code 10.231.0.212} (qits-2231): what a consumer reads as
+   * {@code stale} and recreates. The resolver bean is scripted ({@link ScriptedEdgeHost}) until the
+   * next {@link #cleanUp()}.
+   */
+  public static final String A_RUNNING_CONTAINER_WHOSE_PRIVATE_EDGE_MOVED =
+      "a running container whose private edge moved";
+
   /**
    * The same places and volumes at qits-workspaces-service's own workload, {@code workspace}: its
    * adapter ({@code WorkspaceContainers}) fixes the workload segment of every path, and a pact path
@@ -136,12 +148,18 @@ public class ProviderStates {
 
   @Inject CtVolumeRepository volumes;
 
+  @Inject PrivateEdgeResolver privateEdge;
+
+  /** The resolver's script while a state needs one; given back by {@link #cleanUp()}. */
+  private ScriptedEdgeHost edgeHost;
+
   private final Map<String, Supplier<Setup>> states = new LinkedHashMap<>();
 
   public ProviderStates() {
     states.put(A_RUNNING_CONTAINER, this::aRunningContainer);
     states.put(A_RUNNING_CONTAINER_WITH_ITS_VOLUMES, this::aRunningContainer);
     states.put(NO_CONTAINER, this::noContainer);
+    states.put(A_RUNNING_CONTAINER_WHOSE_PRIVATE_EDGE_MOVED, this::aRunningContainerWhoseEdgeMoved);
     states.put(A_RUNNING_WORKSPACE_CONTAINER, () -> aRunningContainer(WORKSPACE_WORKLOAD));
     states.put(NO_WORKSPACE_CONTAINER, () -> place(WORKSPACE_WORKLOAD));
     states.put(NO_WORKSPACE_CONTAINER_IMAGE_MISSING, this::noWorkspaceContainerImageMissing);
@@ -176,6 +194,10 @@ public class ProviderStates {
 
   /** Deletes every row and forgets everything the fake docker host was told. */
   public void cleanUp() {
+    if (edgeHost != null) {
+      edgeHost.close();
+      edgeHost = null;
+    }
     driver.get().reset();
     QuarkusTransaction.requiringNew()
         .run(
@@ -208,6 +230,13 @@ public class ProviderStates {
         false);
     driver.get().scriptLogs(ContainerNames.of(OWNER, workload, REF), "listening on :8080\n");
     return place(workload);
+  }
+
+  /** {@link #A_RUNNING_CONTAINER}, with the private edge moved out from under it. */
+  private Setup aRunningContainerWhoseEdgeMoved() {
+    Setup setup = aRunningContainer(WORKLOAD);
+    edgeHost = ScriptedEdgeHost.edgeMoved(privateEdge);
+    return setup;
   }
 
   /** Nothing at {@code qits-workspaces/editor/contract-1}: the place an ensure creates. */
