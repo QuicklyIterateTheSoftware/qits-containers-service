@@ -190,23 +190,6 @@ class GoldenMasterRecordingTest {
               200),
           Interaction.of(
               ProviderStates.NO_CONTAINER, "getContainer", "GET", PLACE, Map.of(), null, 404),
-          // qits-2231: what qits-workspaces polls to recreate an idle container whose edge moved.
-          Interaction.of(
-              ProviderStates.A_RUNNING_CONTAINER_WHOSE_PRIVATE_EDGE_MOVED,
-              "getContainerResolvers",
-              "GET",
-              PLACE + "/resolvers",
-              Map.of(),
-              null,
-              200),
-          Interaction.of(
-              ProviderStates.NO_CONTAINER,
-              "getContainerResolvers",
-              "GET",
-              PLACE + "/resolvers",
-              Map.of(),
-              null,
-              404),
           Interaction.of(
               ProviderStates.NO_CONTAINER,
               "deleteContainer",
@@ -234,6 +217,24 @@ class GoldenMasterRecordingTest {
               201),
           Interaction.of(
               ProviderStates.NO_WORKSPACE_CONTAINER, "getContainer", "GET", PLACE, Map.of(), null,
+              404),
+          // qits-2231: what qits-workspaces polls to recreate an idle container whose edge moved,
+          // at its own workload because its adapter fixes that segment in every path.
+          Interaction.of(
+              ProviderStates.A_RUNNING_WORKSPACE_CONTAINER_WHOSE_PRIVATE_EDGE_MOVED,
+              "getContainerResolvers",
+              "GET",
+              PLACE + "/resolvers",
+              Map.of(),
+              null,
+              200),
+          Interaction.of(
+              ProviderStates.NO_WORKSPACE_CONTAINER,
+              "getContainerResolvers",
+              "GET",
+              PLACE + "/resolvers",
+              Map.of(),
+              null,
               404),
           Interaction.of(
               ProviderStates.NO_WORKSPACE_CONTAINER_IMAGE_MISSING,

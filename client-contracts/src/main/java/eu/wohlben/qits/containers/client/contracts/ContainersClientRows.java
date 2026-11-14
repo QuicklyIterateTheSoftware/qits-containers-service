@@ -51,8 +51,16 @@ final class ContainersClientRows {
   static final String CLAIMED_VOLUME = "a claimed volume";
   static final String NO_VOLUME = "no volume";
 
-  /** {@link #RUNNING} on the private edge, still resolving through the VIP the edge has left (qits-2231). */
-  static final String RUNNING_EDGE_MOVED = "a running container whose private edge moved";
+  /**
+   * The running container at the {@code workspace} workload, on the private edge and still
+   * resolving through the VIP the edge has left (qits-2231). The resolvers door is recorded only at
+   * that workload: its one consumer, qits-workspaces' adapter, fixes it in every path.
+   */
+  static final String RUNNING_WORKSPACE_EDGE_MOVED =
+      "a running workspace container whose private edge moved";
+
+  /** Nothing at the {@code workspace} workload's place: the resolvers door's 404. */
+  static final String NO_WORKSPACE_CONTAINER = "no workspace container at the place";
 
   /** The delete door with {@code volumes=true}: the same seed as {@link #RUNNING}, deleted with its volumes. */
   static final String RUNNING_WITH_VOLUME = "a running container with its volumes";
@@ -111,7 +119,7 @@ final class ContainersClientRows {
                   "text", "truncated"));
       case RESOLVERS ->
           List.of(
-              row(feature, "resolvers", RUNNING_EDGE_MOVED, "getContainerResolvers",
+              row(feature, "resolvers", RUNNING_WORKSPACE_EDGE_MOVED, "getContainerResolvers",
                   (url, op) -> {
                     ContainersAnswer<Resolvers> answer =
                         client(url).resolvers(owner(op), workload(op), ref(op), TIMEOUT);
@@ -121,7 +129,7 @@ final class ContainersClientRows {
                     assertFalse(answer.value().expected().isEmpty(), "expected");
                   },
                   "onPrivateEdge", "stale", "dns", "expected"),
-              row(feature, "resolvers", NO_CONTAINER, "getContainerResolvers",
+              row(feature, "resolvers", NO_WORKSPACE_CONTAINER, "getContainerResolvers",
                   (url, op) -> assertRefused(op, client(url).resolvers(owner(op), workload(op), ref(op), TIMEOUT))));
       case STOP ->
           List.of(

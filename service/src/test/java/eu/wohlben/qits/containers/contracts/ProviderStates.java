@@ -52,14 +52,15 @@ public class ProviderStates {
   public static final String A_RUNNING_CONTAINER_WITH_ITS_VOLUMES =
       "a running container with its volumes";
   /**
-   * The running container at {@code qits-workspaces/editor/contract-1}, on the private edge's
-   * overlay and still resolving through the VIP it was run with ({@code 10.231.0.2}), while the
-   * edge's swarm service now sits on {@code 10.231.0.212} (qits-2231): what a consumer reads as
-   * {@code stale} and recreates. The resolver bean is scripted ({@link ScriptedEdgeHost}) until the
-   * next {@link #cleanUp()}.
+   * {@link #A_RUNNING_WORKSPACE_CONTAINER} — {@code qits-workspaces/workspace/contract-1} — on the
+   * private edge's overlay and still resolving through the VIP it was run with ({@code
+   * 10.231.0.2}), while the edge's swarm service now sits on {@code 10.231.0.212} (qits-2231): what
+   * qits-workspaces' adapter reads as {@code stale} and recreates. At the workspace workload because
+   * that adapter fixes it in every path. The resolver bean is scripted ({@link ScriptedEdgeHost})
+   * until the next {@link #cleanUp()}.
    */
-  public static final String A_RUNNING_CONTAINER_WHOSE_PRIVATE_EDGE_MOVED =
-      "a running container whose private edge moved";
+  public static final String A_RUNNING_WORKSPACE_CONTAINER_WHOSE_PRIVATE_EDGE_MOVED =
+      "a running workspace container whose private edge moved";
 
   /**
    * The same places and volumes at qits-workspaces-service's own workload, {@code workspace}: its
@@ -159,7 +160,9 @@ public class ProviderStates {
     states.put(A_RUNNING_CONTAINER, this::aRunningContainer);
     states.put(A_RUNNING_CONTAINER_WITH_ITS_VOLUMES, this::aRunningContainer);
     states.put(NO_CONTAINER, this::noContainer);
-    states.put(A_RUNNING_CONTAINER_WHOSE_PRIVATE_EDGE_MOVED, this::aRunningContainerWhoseEdgeMoved);
+    states.put(
+        A_RUNNING_WORKSPACE_CONTAINER_WHOSE_PRIVATE_EDGE_MOVED,
+        this::aRunningWorkspaceContainerWhoseEdgeMoved);
     states.put(A_RUNNING_WORKSPACE_CONTAINER, () -> aRunningContainer(WORKSPACE_WORKLOAD));
     states.put(NO_WORKSPACE_CONTAINER, () -> place(WORKSPACE_WORKLOAD));
     states.put(NO_WORKSPACE_CONTAINER_IMAGE_MISSING, this::noWorkspaceContainerImageMissing);
@@ -232,9 +235,9 @@ public class ProviderStates {
     return place(workload);
   }
 
-  /** {@link #A_RUNNING_CONTAINER}, with the private edge moved out from under it. */
-  private Setup aRunningContainerWhoseEdgeMoved() {
-    Setup setup = aRunningContainer(WORKLOAD);
+  /** {@link #A_RUNNING_WORKSPACE_CONTAINER}, with the private edge moved out from under it. */
+  private Setup aRunningWorkspaceContainerWhoseEdgeMoved() {
+    Setup setup = aRunningContainer(WORKSPACE_WORKLOAD);
     edgeHost = ScriptedEdgeHost.edgeMoved(privateEdge);
     return setup;
   }
