@@ -53,6 +53,12 @@
           "site" : "ContainersResource.logs(String, String, String, int)"
         },
         {
+          "type" : "eu.wohlben.qits.containers.api.ContainersWire$ResolversEnvelope",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.containers.control.ContainerRegistry$Place",
+          "site" : "ContainersResource.resolvers(String, String, String)"
+        },
+        {
           "type" : "eu.wohlben.qits.containers.api.ContainersWire$StateDto",
           "kind" : "via",
           "via" : "eu.wohlben.qits.containers.driver.spec.LifecyclePolicy",
@@ -127,6 +133,14 @@
           "method" : "GET",
           "path" : "/containers/{owner}/{workload}/{ref}/logs",
           "dto" : "eu.wohlben.qits.containers.api.ContainersWire$LogsResponse",
+          "kind" : "returns",
+          "cardinality" : "single"
+        },
+        {
+          "operationId" : "getContainerResolvers",
+          "method" : "GET",
+          "path" : "/containers/{owner}/{workload}/{ref}/resolvers",
+          "dto" : "eu.wohlben.qits.containers.api.ContainersWire$ResolversEnvelope",
           "kind" : "returns",
           "cardinality" : "single"
         },
