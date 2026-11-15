@@ -64,6 +64,14 @@ host: containers
 # Ticket qits-879.
 resources: postgresql:db, postgresql:eventstream:qits_containers_eventstream, idp:client
 
+# PRIVATE (qits-1980, task qits-2135): served by qits-edge-private only, reached through the WireGuard
+# tunnel or the qits-private overlay; the public edge refuses containers. Its callers, projects,
+# workspaces and the orchestrator, are private already (the release-path window of 2026-11-15).
+# Its databases live on the private Postgres, qits-oci-postgresql-private: a private exposure
+# moves them there (qits-2175). Revert: delete this line, which moves the databases back to the
+# public server with the service.
+exposure: private
+
 # THE PROBE THE DEPLOY GATES ON. It is the derived default — /containers/q/health/ready, the
 # repository name minus `qits-` — and it is spelled out anyway, so a future change to
 # quarkus.http.non-application-root-path is a diff here rather than a deploy that gates on a 404.
