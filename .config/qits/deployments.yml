@@ -58,8 +58,9 @@ host: containers
 # stores a database password, and injects QITS_RESOURCE_IDP_URL, QITS_RESOURCE_IDP_CLIENT_ID and
 # QITS_RESOURCE_IDP_CLIENT_SECRET. It is for IMAGE PULLS: at start DockerCredentials writes them as
 # the docker CLI's config.json under /tmp/qits-docker and every docker child is pointed there, which
-# retires the bootstrap-era Basic secret in the /work/config volume's config.json — qits-878 collects
-# that old client. The mounted volume stays readable for a rollback onto the previous spec.
+# retired the bootstrap-era Basic secret in the /work/config volume's config.json — qits-878 collects
+# that old client. The volume itself is gone: the bootstrap no longer creates it and the deployer
+# --mount-rm's /work/config from the live service on its next update (qits-2266).
 #
 # Ticket qits-879.
 resources: postgresql:db, postgresql:eventstream:qits_containers_eventstream, idp:client
