@@ -173,12 +173,26 @@ stored, never hashed. So a flagged spec and its unflagged twin answer the same `
 the flag on recreates nothing (a running container takes the edge at its next run), and an edge
 redeployed onto a new VIP moves no row. Every step degrades to today's behaviour with a warning and
 none fails the run: no `qits-private` network is no join and no resolver (a join to a missing
-network would fail the run itself); no single `qits.platform.deployments.app-name=qits-edge-private`
-service, or no VIP of it on the overlay, is the join with the host's resolvers; and no
-`# ExtServers: [...]` line in this container's `/etc/resolv.conf` is the same. **The resolver list is
-`[vip, upstream...]` or nothing** — `--dns` replaces the upstream rather than adding to it, so a
-VIP-only list would answer every public name REFUSED. The three names are
-`qits.containers.private-edge.{network,application,resolv-conf}`.
+network would fail the run itself); no single swarm service for the preferred application, or no
+VIP of it on the overlay, is the join with the host's resolvers; and no `# ExtServers: [...]` line
+in this container's `/etc/resolv.conf` is the same. **The resolver list is `[vip, upstream...]` or
+nothing** — `--dns` replaces the upstream rather than adding to it, so a VIP-only list would answer
+every public name REFUSED.
+
+**Which edge's VIP goes first is `applications`, an ordered preference (qits-2304)** —
+`qits-edge-overlay,qits-edge-private` shipped. qits-edge-private is the WireGuard tunnel edge; it
+redeploys stop-first and leaves a 90-180s gap where a lookup falls through to an unroutable public
+answer. qits-edge-overlay is start-first on the same overlay and answers the same label-and-VIP
+question, so it replaces qits-edge-private as the first resolver the moment it exists, with no gap
+of its own. The walk tries each application in order: one with **no** swarm service at all is
+skipped (the ordinary state of qits-edge-overlay before it is deployed), but any other failure for
+an application — several services, no VIP of it on the overlay, the lookup itself refused — stops
+the walk with no resolver rather than falling through, so a passing docker hiccup never flips a
+container onto the fallback edge and back. `application` alone still names the tunnel edge's
+identity; `applications` empty falls back to it, the pre-qits-2304 shape. qits-deployments'
+`SwarmDeploymentDriver.resolverApplications()` and the runner's `PrivateEdge.APPLICATIONS` walk the
+same order. The four names are
+`qits.containers.private-edge.{network,application,applications,resolv-conf}`.
 
 ### Who may call
 

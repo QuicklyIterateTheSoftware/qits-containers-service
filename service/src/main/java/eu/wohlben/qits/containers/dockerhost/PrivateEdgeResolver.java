@@ -23,7 +23,7 @@ import org.jboss.logging.Logger;
 
 /**
  * What {@code privateEdge} on the wire becomes at the moment a container is run (qits-1991): a
- * membership of the {@code qits-private} overlay, and the private edge's VIP on it as the first
+ * membership of the {@code qits-private} overlay, and a resolver edge's VIP on it as the first
  * resolver, followed by the host's own.
  *
  * <p><b>Why this service and not the caller.</b> qits-workspaces knows that a DIRECT admin
@@ -48,15 +48,25 @@ import org.jboss.logging.Logger;
  *       missing overlay into a workspace that cannot start at all. A host without the overlay (a
  *       dev box, an estate before qits-deployments created it) runs the container exactly as if the
  *       flag were off. A spec already on the network as its primary is not joined to it again.
- *   <li><b>Where is the edge on it?</b> {@code docker service ls -q --filter
+ *   <li><b>Where is the edge on it?</b> {@link #applications} (qits-2304) lists the preference —
+ *       {@code qits-edge-overlay} then {@code qits-edge-private} shipped — and this question is
+ *       asked of each in turn until one answers: {@code docker service ls -q --filter
  *       label=qits.platform.deployments.app-name=<application>} — qits-deployments' {@code
  *       DeploymentDriver.APP_NAME_LABEL}, spelled here because that jar is not on this classpath —
  *       then {@code docker service inspect --format {{json .Endpoint.VirtualIPs}}} and the entry
- *       whose {@code NetworkID} is the overlay's id, its {@code /prefix} stripped. Exactly one
- *       service is expected; none or several is no resolver, with the join kept, because a
- *       container on the overlay with the ordinary resolvers is strictly better than one without.
- *       The {@code service} verbs are this class's and not the driver's: they read swarm state the
- *       driver's container vocabulary has no reason to know, and the answers are read-only.
+ *       whose {@code NetworkID} is the overlay's id, its {@code /prefix} stripped. An application
+ *       with <em>no</em> service at all is skipped in favour of the next preference — that is the
+ *       ordinary state of {@code qits-edge-overlay} before qits-deployments ever deploys it, and
+ *       falling through to {@code qits-edge-private} there is exactly qits-1991's shipped
+ *       behaviour. Any other answer for an application — several services, no VIP of it on the
+ *       overlay, or the {@code service ls} itself refused — stops the walk with no resolver rather
+ *       than trying the next preference: a passing docker hiccup must never flip a container onto
+ *       the fallback edge only to flip it back at its next run. The {@code service} verbs are this
+ *       class's and not the driver's: they read swarm state the driver's container vocabulary has
+ *       no reason to know, and the answers are read-only. Why {@code qits-edge-overlay} is
+ *       preferred at all: it is start-first, so unlike the WireGuard tunnel edge it never leaves a
+ *       window where a container's lookup falls through to an unroutable public answer while the
+ *       edge redeploys.
  *   <li><b>What comes after it?</b> The {@code # ExtServers: [...]} comment docker writes into this
  *       container's own {@code /etc/resolv.conf}, which is the upstream list docker's embedded
  *       resolver forwards to here and will forward to in a sibling — {@code host(x)} is the
@@ -124,6 +134,15 @@ public class PrivateEdgeResolver {
   /** The application name of the private edge, as its swarm service's app-name label holds it. */
   @ConfigProperty(name = "qits.containers.private-edge.application")
   String application;
+
+  /**
+   * The resolver preference, in order (qits-2304) — {@code qits-edge-overlay,qits-edge-private}
+   * shipped. {@link #applications} is the list actually walked: stripped, de-duplicated, and {@link
+   * #application} alone when this names nothing, so a host still on the pre-qits-2304 shape keeps
+   * exactly today's behaviour.
+   */
+  @ConfigProperty(name = "qits.containers.private-edge.applications")
+  Optional<List<String>> applications = Optional.empty();
 
   /** Where this container's own resolv.conf is read from — configurable for the suite only. */
   @ConfigProperty(name = "qits.containers.private-edge.resolv-conf")
@@ -353,8 +372,62 @@ public class PrivateEdgeResolver {
     return Optional.of(id);
   }
 
-  /** The private edge's address on the overlay, or empty with a warning naming why. */
+  /**
+   * {@link #applications}, stripped and without blanks, in order and de-duplicated (qits-2304) —
+   * or {@link #application} alone when it names none, the pre-qits-2304 shape.
+   */
+  List<String> applications() {
+    List<String> listed = new ArrayList<>();
+    List<String> configured = applications == null ? List.of() : applications.orElse(List.of());
+    for (String candidate : configured) {
+      if (candidate != null && !candidate.isBlank() && !listed.contains(candidate.strip())) {
+        listed.add(candidate.strip());
+      }
+    }
+    if (listed.isEmpty() && application != null && !application.isBlank()) {
+      listed.add(application.strip());
+    }
+    return List.copyOf(listed);
+  }
+
+  /** Whether a lookup found no swarm service at all — the one answer the walk skips past. */
+  private record VipLookup(Optional<String> vip, boolean absent) {}
+
+  /**
+   * The first preferred edge's address on the overlay (qits-2304): {@link #applications} walked in
+   * order, the first one {@link #edgeVipOf} finds a VIP for. An application with no swarm service
+   * at all is skipped — {@code qits-edge-overlay} before it is ever deployed, so {@code
+   * qits-edge-private}'s VIP stands until then. <b>Any other failure stops the walk with no
+   * resolver</b> rather than falling through to the next preference: a docker hiccup on the
+   * preferred edge must not hand a live container the fallback's VIP only to hand it back at the
+   * next run. Empty with a warning only once every preference was absent; a harder failure warns
+   * from inside {@link #edgeVipOf} and stops there.
+   */
   private Optional<String> edgeVip(String networkId, String containerName) {
+    List<String> absentFrom = new ArrayList<>();
+    for (String candidate : applications()) {
+      VipLookup lookup = edgeVipOf(candidate, networkId, containerName);
+      if (lookup.vip().isPresent()) {
+        return lookup.vip();
+      }
+      if (!lookup.absent()) {
+        return Optional.empty();
+      }
+      absentFrom.add(candidate);
+    }
+    LOG.warnf(
+        "%s joins %s but keeps the host's resolvers: no swarm service labelled %s=<application> for"
+            + " any of %s",
+        containerName, network, APP_NAME_LABEL, absentFrom);
+    return Optional.empty();
+  }
+
+  /**
+   * One preference's address on the overlay, or empty with a warning naming why — unless the
+   * reason is only that {@code application} has no swarm service at all, which {@link #edgeVip}'s
+   * walk is entitled to skip past quietly.
+   */
+  private VipLookup edgeVipOf(String application, String networkId, String containerName) {
     ContainerProcess.Result listed =
         call(
             List.of(
@@ -363,6 +436,9 @@ public class PrivateEdgeResolver {
         listed.exitCode() == 0
             ? listed.output().lines().map(String::strip).filter(l -> !l.isEmpty()).toList()
             : List.of();
+    if (listed.exitCode() == 0 && services.isEmpty()) {
+      return new VipLookup(Optional.empty(), true);
+    }
     if (services.size() != 1 || !DOCKER_ID.matcher(services.getFirst()).matches()) {
       LOG.warnf(
           "%s joins %s but keeps the host's resolvers: expected exactly one swarm service labelled"
@@ -372,7 +448,7 @@ public class PrivateEdgeResolver {
           APP_NAME_LABEL,
           application,
           listed.exitCode() == 0 ? services.size() + " (" + String.join(", ", services) + ")" : brief(listed));
-      return Optional.empty();
+      return new VipLookup(Optional.empty(), false);
     }
     ContainerProcess.Result inspected =
         call(
@@ -390,8 +466,9 @@ public class PrivateEdgeResolver {
           "%s joins %s but keeps the host's resolvers: the service %s (%s) has no virtual IP on it"
               + " (%s)",
           containerName, network, services.getFirst(), application, brief(inspected));
+      return new VipLookup(Optional.empty(), false);
     }
-    return vip;
+    return new VipLookup(vip, false);
   }
 
   /** The {@code Addr} of the entry whose {@code NetworkID} is the overlay's, without its prefix. */

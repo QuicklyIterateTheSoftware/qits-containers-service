@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -62,6 +63,14 @@ class PrivateEdgeResolverTest {
 
   private final Map<String, ContainerProcess.Result> answers = new LinkedHashMap<>();
 
+  /**
+   * Answers keyed by the FULL argv, checked before {@link #answers}: what the qits-2304 preference
+   * walk needs, since two applications' {@code service ls}/{@code service inspect} calls differ
+   * only past the second word — the label value, or the service id — which the plain verb key
+   * cannot tell apart.
+   */
+  private final Map<String, ContainerProcess.Result> argvAnswers = new LinkedHashMap<>();
+
   private final List<List<String>> calls = new ArrayList<>();
 
   @BeforeEach
@@ -77,6 +86,10 @@ class PrivateEdgeResolverTest {
     answers.put(verb, new ContainerProcess.Result(exit, output, false, false));
   }
 
+  private void answerArgv(List<String> argv, int exit, String output) {
+    argvAnswers.put(String.join(" ", argv), new ContainerProcess.Result(exit, output, false, false));
+  }
+
   private PrivateEdgeResolver resolver() {
     return new PrivateEdgeResolver(
         "docker",
@@ -87,7 +100,10 @@ class PrivateEdgeResolverTest {
           calls.add(argv);
           assertEquals(ContainersTimeouts.INSPECT, timeout, "every call carries the timeout");
           assertEquals(ContainersTimeouts.SHORT_MAX_CHARS, maxChars, "every call carries a bound");
-          ContainerProcess.Result result = answers.get(argv.get(1) + " " + argv.get(2));
+          ContainerProcess.Result result = argvAnswers.get(String.join(" ", argv));
+          if (result == null) {
+            result = answers.get(argv.get(1) + " " + argv.get(2));
+          }
           return result == null ? new ContainerProcess.Result(1, "unscripted", false, false) : result;
         });
   }
@@ -424,6 +440,144 @@ class PrivateEdgeResolverTest {
     assertEquals(List.of("10.231.0.5", "192.168.1.1", "9.9.9.9"), resolver().choice());
     answer("network inspect", 1, "Error response from daemon: network qits-private not found\n");
     assertEquals(List.of(), resolver().choice());
+  }
+
+  // --- qits-2304: qits-edge-overlay is the preferred resolver, qits-edge-private the fallback ----
+
+  private static final String OVERLAY_SERVICE_ID = "o1o1o1o1o1o1";
+
+  private static final List<String> OVERLAY_LS =
+      List.of(
+          "docker",
+          "service",
+          "ls",
+          "-q",
+          "--filter",
+          "label=qits.platform.deployments.app-name=qits-edge-overlay");
+
+  private static final List<String> PRIVATE_EDGE_LS =
+      List.of(
+          "docker",
+          "service",
+          "ls",
+          "-q",
+          "--filter",
+          "label=qits.platform.deployments.app-name=qits-edge-private");
+
+  /** The preference the shipped config carries since qits-2304: the overlay edge, then the tunnel. */
+  private PrivateEdgeResolver preferring(PrivateEdgeResolver resolver) {
+    resolver.applications = Optional.of(List.of("qits-edge-overlay", "qits-edge-private"));
+    return resolver;
+  }
+
+  private boolean asked(List<String> argv) {
+    return calls.stream().anyMatch(call -> call.equals(argv));
+  }
+
+  @Test
+  void anOverlayEdgePresentIsTheFirstResolverAndThePrivateEdgeIsNeverAsked() {
+    PrivateEdgeResolver resolver = preferring(resolver());
+    answerArgv(OVERLAY_LS, 0, OVERLAY_SERVICE_ID + "\n");
+    answerArgv(
+        List.of(
+            "docker",
+            "service",
+            "inspect",
+            "--format",
+            "{{json .Endpoint.VirtualIPs}}",
+            OVERLAY_SERVICE_ID),
+        0,
+        "[{\"NetworkID\":\"" + NETWORK_ID + "\",\"Addr\":\"10.231.0.9/20\"}]\n");
+
+    ContainerSpec resolved = resolver.resolve(spec(), "qits-ws-1");
+
+    assertEquals(
+        List.of("10.231.0.9", "192.168.1.1", "9.9.9.9"),
+        resolved.dns(),
+        "the overlay edge's VIP, not the private edge's");
+    assertTrue(asked(OVERLAY_LS), calls.toString());
+    assertFalse(
+        asked(PRIVATE_EDGE_LS),
+        "the private edge is not even asked once the overlay edge answered: " + calls);
+  }
+
+  @Test
+  void noOverlayEdgeServiceYetFallsBackToThePrivateEdge() {
+    PrivateEdgeResolver resolver = preferring(resolver());
+    answerArgv(OVERLAY_LS, 0, "");
+    // The shipped fallback answers, scripted in @BeforeEach, under qits-edge-private's own name.
+
+    ContainerSpec resolved = resolver.resolve(spec(), "qits-ws-1");
+
+    assertEquals(
+        List.of("10.231.0.5", "192.168.1.1", "9.9.9.9"),
+        resolved.dns(),
+        "the private edge's VIP once the overlay edge has no service at all");
+    assertTrue(asked(OVERLAY_LS), "the preferred edge was asked first: " + calls);
+    assertTrue(asked(PRIVATE_EDGE_LS), calls.toString());
+  }
+
+  @Test
+  void anOverlayEdgeLookupThatFailsNeverFallsThroughToThePrivateEdge() {
+    // Absent (no service) is skipped; a refused lookup is a different answer and must stop the
+    // walk, or a passing docker hiccup would flip a live container onto the fallback edge and then
+    // back again at its next run.
+    PrivateEdgeResolver resolver = preferring(resolver());
+    answerArgv(OVERLAY_LS, 1, "Error response from daemon: This node is not a swarm manager.\n");
+
+    ContainerSpec resolved = resolver.resolve(spec(), "qits-ws-1");
+
+    assertEquals(List.of(), resolved.dns(), "no resolver, never the private edge's as a fallback");
+    assertTrue(asked(OVERLAY_LS), calls.toString());
+    assertFalse(asked(PRIVATE_EDGE_LS), "a refused lookup stops the walk: " + calls);
+  }
+
+  @Test
+  void twoOverlayEdgeServicesAlsoStopsTheWalkWithNoResolver() {
+    PrivateEdgeResolver resolver = preferring(resolver());
+    answerArgv(OVERLAY_LS, 0, OVERLAY_SERVICE_ID + "\nz9z9z9z9z9z9\n");
+
+    ContainerSpec resolved = resolver.resolve(spec(), "qits-ws-1");
+
+    assertEquals(List.of(), resolved.dns());
+    assertFalse(asked(PRIVATE_EDGE_LS), calls.toString());
+  }
+
+  @Test
+  void stalenessIsReadAgainstThePreferredEdgesVip() {
+    // Run while only the private edge existed, so the container's first resolver is its VIP.
+    container("[\"10.231.0.5\",\"192.168.1.1\"]", "qits-net", "qits-private");
+    PrivateEdgeResolver resolver = preferring(resolver());
+    answerArgv(OVERLAY_LS, 0, OVERLAY_SERVICE_ID + "\n");
+    answerArgv(
+        List.of(
+            "docker",
+            "service",
+            "inspect",
+            "--format",
+            "{{json .Endpoint.VirtualIPs}}",
+            OVERLAY_SERVICE_ID),
+        0,
+        "[{\"NetworkID\":\"" + NETWORK_ID + "\",\"Addr\":\"10.231.0.9/20\"}]\n");
+
+    PrivateEdgeResolver.Staleness staleness = resolver.staleness("qits-ws-1");
+
+    assertTrue(staleness.onPrivateEdge());
+    assertEquals(List.of("10.231.0.5", "192.168.1.1"), staleness.dns());
+    assertEquals(
+        List.of("10.231.0.9", "192.168.1.1", "9.9.9.9"),
+        staleness.expected(),
+        "the overlay edge's VIP, now that it exists, is what a container is expected to resolve"
+            + " through first");
+    assertTrue(staleness.stale(), "the container still holds the tunnel edge's VIP as its first");
+  }
+
+  @Test
+  void anEmptyPreferenceListIsTheSingleApplicationAlone() {
+    PrivateEdgeResolver resolver = resolver();
+    assertEquals(List.of("qits-edge-private"), resolver.applications());
+    resolver.applications = Optional.of(List.of(" qits-edge-overlay ", "", "qits-edge-private"));
+    assertEquals(List.of("qits-edge-overlay", "qits-edge-private"), resolver.applications());
   }
 
   @Test
